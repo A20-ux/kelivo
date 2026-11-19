@@ -16956,4 +16956,43 @@ class AppLocalizationsKo extends AppLocalizations {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS에서 백업 비밀번호 접근이 거부되었습니다. 시스템 프롬프트가 나타나면 Kelivo의 접근을 허용해 주세요. 키체인 접근에서 기본 키체인과 비밀번호 항목의 권한을 확인할 수도 있습니다.';
+
+  @override
+  String get appLockTitle => '앱 잠금';
+
+  @override
+  String get appLockEnable => '앱 잠금 사용';
+
+  @override
+  String get appLockEnableSubtitle => '앱을 열 때 PIN 입력 요구';
+
+  @override
+  String get appLockLockOnResume => '앱으로 돌아올 때 잠금';
+
+  @override
+  String get appLockSetPin => 'PIN 설정';
+
+  @override
+  String get appLockChangePin => 'PIN 변경';
+
+  @override
+  String get appLockPinHint => '4–8자리 숫자 PIN';
+
+  @override
+  String get appLockPinConfirm => 'PIN 확인';
+
+  @override
+  String get appLockPinMismatch => '두 PIN이 일치하지 않습니다';
+
+  @override
+  String get appLockPinWrong => 'PIN이 틀렸습니다. 다시 시도하세요';
+
+  @override
+  String get appLockUnlock => '잠금 해제하려면 PIN 입력';
+
+  @override
+  String get appLockRemovePin => '잠금을 끄고 PIN 삭제';
+
+  @override
+  String get appLockSaved => 'PIN이 저장되었습니다';
 }

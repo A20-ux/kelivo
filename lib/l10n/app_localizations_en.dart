@@ -17495,4 +17495,43 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS denied access to the backup password. If a system prompt appears, allow Kelivo to access it. You can also check the default keychain and the password item’s permissions in Keychain Access.';
+
+  @override
+  String get appLockTitle => 'App Lock';
+
+  @override
+  String get appLockEnable => 'Lock this app';
+
+  @override
+  String get appLockEnableSubtitle => 'Require a PIN when opening the app';
+
+  @override
+  String get appLockLockOnResume => 'Lock when returning to app';
+
+  @override
+  String get appLockSetPin => 'Set PIN';
+
+  @override
+  String get appLockChangePin => 'Change PIN';
+
+  @override
+  String get appLockPinHint => '4–8 digit numeric PIN';
+
+  @override
+  String get appLockPinConfirm => 'Confirm PIN';
+
+  @override
+  String get appLockPinMismatch => 'The two PINs do not match';
+
+  @override
+  String get appLockPinWrong => 'Incorrect PIN, try again';
+
+  @override
+  String get appLockUnlock => 'Enter PIN to unlock';
+
+  @override
+  String get appLockRemovePin => 'Turn off lock and remove PIN';
+
+  @override
+  String get appLockSaved => 'PIN saved';
 }

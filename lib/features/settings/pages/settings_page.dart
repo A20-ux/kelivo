@@ -15,6 +15,7 @@ import '../../mcp/pages/mcp_page.dart';
 import '../../workspace/pages/skills_page.dart';
 import '../../workspace/pages/workspace_settings_page.dart';
 import '../../assistant/pages/assistant_settings_page.dart';
+import 'app_lock_settings_page.dart';
 import 'about_page.dart';
 import 'memory_settings_page.dart';
 import 'tts_services_page.dart';
@@ -202,6 +203,13 @@ class SettingsPage extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+              _iosDivider(context),
+              _iosNavRow(
+                context,
+                icon: Lucide.Lock,
+                label: l10n.appLockTitle,
+                onTap: () => AppLockSettingsPage.open(context),
               ),
             ],
           ),

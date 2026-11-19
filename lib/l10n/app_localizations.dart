@@ -30629,6 +30629,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'macOS denied access to the backup password. If a system prompt appears, allow Kelivo to access it. You can also check the default keychain and the password item’s permissions in Keychain Access.'**
   String get backupMacKeychainAccessDenied;
+
+  /// Menu item and settings page title for the app lock feature that gates the whole app behind a PIN.
+  ///
+  /// In en, this message translates to:
+  /// **'App Lock'**
+  String get appLockTitle;
+
+  /// Toggle row label: turn app lock on or off. Enabling requires a PIN to be set first.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock this app'**
+  String get appLockEnable;
+
+  /// Subtitle under the enable toggle explaining that the app asks for a PIN on launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Require a PIN when opening the app'**
+  String get appLockEnableSubtitle;
+
+  /// Toggle: re-lock the app when it comes back to the foreground after being backgrounded.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock when returning to app'**
+  String get appLockLockOnResume;
+
+  /// Button/field label to create a numeric unlock PIN.
+  ///
+  /// In en, this message translates to:
+  /// **'Set PIN'**
+  String get appLockSetPin;
+
+  /// Button/field label to replace the existing unlock PIN.
+  ///
+  /// In en, this message translates to:
+  /// **'Change PIN'**
+  String get appLockChangePin;
+
+  /// Hint shown in the PIN entry field: only digits, four to eight characters.
+  ///
+  /// In en, this message translates to:
+  /// **'4–8 digit numeric PIN'**
+  String get appLockPinHint;
+
+  /// Field label asking the user to re-enter the PIN to confirm it matches.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm PIN'**
+  String get appLockPinConfirm;
+
+  /// Error shown when the confirmation PIN differs from the first entry.
+  ///
+  /// In en, this message translates to:
+  /// **'The two PINs do not match'**
+  String get appLockPinMismatch;
+
+  /// Error shown on the unlock screen when the entered PIN does not match the saved hash.
+  ///
+  /// In en, this message translates to:
+  /// **'Incorrect PIN, try again'**
+  String get appLockPinWrong;
+
+  /// Heading on the lock screen shown before the app content is unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter PIN to unlock'**
+  String get appLockUnlock;
+
+  /// Destructive action that disables app lock and deletes the saved PIN.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off lock and remove PIN'**
+  String get appLockRemovePin;
+
+  /// Snackbar confirmation after the PIN has been saved.
+  ///
+  /// In en, this message translates to:
+  /// **'PIN saved'**
+  String get appLockSaved;
 }
 
 class _AppLocalizationsDelegate

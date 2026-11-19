@@ -5082,5 +5082,18 @@
   "backupEncryptionChangePassword": "變更備份密碼",
   "backupMacKeychainNeedsUnlock": "macOS 無法解鎖登入鑰匙圈。請開啟「鑰匙串存取」，解鎖「登入」，再回到 Kelivo 重試。",
   "backupMacOpenKeychainAccess": "開啟鑰匙圈存取",
-  "backupMacKeychainAccessDenied": "macOS 拒絕存取備份密碼。如果出現系統提示，請允許 Kelivo 存取。你也可以在「鑰匙串存取」中檢查預設鑰匙串和備份密碼項目的權限。"
+  "backupMacKeychainAccessDenied": "macOS 拒絕存取備份密碼。如果出現系統提示，請允許 Kelivo 存取。你也可以在「鑰匙串存取」中檢查預設鑰匙串和備份密碼項目的權限。",
+  "appLockTitle": "應用鎖",
+  "appLockEnable": "啟用應用鎖",
+  "appLockEnableSubtitle": "打開應用時需要輸入密碼",
+  "appLockLockOnResume": "回到應用時重新鎖定",
+  "appLockSetPin": "設定密碼",
+  "appLockChangePin": "修改密碼",
+  "appLockPinHint": "4–8 位數字密碼",
+  "appLockPinConfirm": "確認密碼",
+  "appLockPinMismatch": "兩次輸入的密碼不一致",
+  "appLockPinWrong": "密碼錯誤，請重試",
+  "appLockUnlock": "輸入密碼解鎖",
+  "appLockRemovePin": "關閉鎖定並刪除密碼",
+  "appLockSaved": "密碼已儲存"
 }

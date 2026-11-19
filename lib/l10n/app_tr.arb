@@ -5082,5 +5082,18 @@
   "backupEncryptionChangePassword": "Yedek parolasını değiştir",
   "backupMacKeychainNeedsUnlock": "macOS oturum açma anahtarlığının kilidini açamadı. Anahtar Zinciri Erişimi'ni açın, “oturum açma” anahtarlığının kilidini açın ve ardından Kelivo'da tekrar deneyin.",
   "backupMacOpenKeychainAccess": "Anahtar Zinciri Erişimi'ni aç",
-  "backupMacKeychainAccessDenied": "macOS yedek parolasına erişimi reddetti. Bir sistem istemi görünürse Kelivo'nun erişmesine izin verin. Ayrıca Anahtar Zinciri Erişimi'nde varsayılan anahtar zincirini ve parola öğesinin izinlerini kontrol edebilirsiniz."
+  "backupMacKeychainAccessDenied": "macOS yedek parolasına erişimi reddetti. Bir sistem istemi görünürse Kelivo'nun erişmesine izin verin. Ayrıca Anahtar Zinciri Erişimi'nde varsayılan anahtar zincirini ve parola öğesinin izinlerini kontrol edebilirsiniz.",
+  "appLockTitle": "Uygulama Kilidi",
+  "appLockEnable": "Uygulamayı kilitle",
+  "appLockEnableSubtitle": "Uygulama açılırken PIN iste",
+  "appLockLockOnResume": "Uygulamaya dönünce kilitle",
+  "appLockSetPin": "PIN belirle",
+  "appLockChangePin": "PIN değiştir",
+  "appLockPinHint": "4–8 haneli sayısal PIN",
+  "appLockPinConfirm": "PIN'i onayla",
+  "appLockPinMismatch": "İki PIN uyuşmuyor",
+  "appLockPinWrong": "Yanlış PIN, tekrar deneyin",
+  "appLockUnlock": "Kilidi açmak için PIN girin",
+  "appLockRemovePin": "Kilidi kapat ve PIN'i sil",
+  "appLockSaved": "PIN kaydedildi"
 }

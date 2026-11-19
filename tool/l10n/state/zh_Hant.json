@@ -5082,5 +5082,18 @@
   "backupEncryptionChangePassword": "7b64b792598b36dbff3514cb0450cd063e05426b9398b0e67ff12039d08a2e8d",
   "backupMacKeychainNeedsUnlock": "3d2ffb96bbc66a5048e53926d3009cfb1079e90cf585bdeee1b04faf4a5110b9",
   "backupMacOpenKeychainAccess": "c136cb097a7ae1611e49b4dd4dd6d9efcb67f81543a4bad73d484680c6d6e8b4",
-  "backupMacKeychainAccessDenied": "628d87aafd43e2c0e1a254cf527dd1c2cec911196d8358fdd1210d761f83f154"
+  "backupMacKeychainAccessDenied": "628d87aafd43e2c0e1a254cf527dd1c2cec911196d8358fdd1210d761f83f154",
+  "appLockTitle": "2ac7e12a1c8c1665aa3eff486cc33a19597a3e709609699566c5834f34f658af",
+  "appLockEnable": "55d375fc6b7f56888bb7bd984a48c03e2d684eed5298ed400b57eee8f5a36b52",
+  "appLockEnableSubtitle": "5453b62a78eb7006c8476db5f6b4c8b7bb857923943eaa29a3d87579008ca090",
+  "appLockLockOnResume": "c6a98b9afc89d9414a7a466e987abc0b1e3952d1f1575fc872d5dbebac13c614",
+  "appLockSetPin": "7362e2e967a4a1cbf77dc6aa2d9adc90fe31d820e755bc8ba887340d8440446b",
+  "appLockChangePin": "8e67a8e8c19d2528705049ff074df18419d51d1699e27308d2d42573b79639a4",
+  "appLockPinHint": "45a3a06276605d4ad8d4c5f7ac23b22a91081bbfb90d861f1576eb057e2e4617",
+  "appLockPinConfirm": "2b87605741be9932382eb2e51de739beebfccae2a9209111e7960ab901b69c61",
+  "appLockPinMismatch": "11dd452f51a29c8033f70ad3dfe023fa8bf05b71e78e921edb7579532305acf7",
+  "appLockPinWrong": "aec074b392e9a99c5916a1c0c45b54eadc125ce4dc8023e82d928980e54c7b25",
+  "appLockUnlock": "6692195c88cf7cc7de0e3a928ce82adcd699f2b5283e044fc6c01ec7b7bd03e3",
+  "appLockRemovePin": "8a52b9828953b81487aa95ab70b0b7f80c0bf708b2dbe2aa0f6e3f11e24d061c",
+  "appLockSaved": "51cc7f484ecfe93b8207035ea941e9f04449c99a1afc71555df82f98eb70c269"
 }

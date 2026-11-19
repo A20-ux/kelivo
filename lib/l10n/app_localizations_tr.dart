@@ -17589,4 +17589,43 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS yedek parolasına erişimi reddetti. Bir sistem istemi görünürse Kelivo\'nun erişmesine izin verin. Ayrıca Anahtar Zinciri Erişimi\'nde varsayılan anahtar zincirini ve parola öğesinin izinlerini kontrol edebilirsiniz.';
+
+  @override
+  String get appLockTitle => 'Uygulama Kilidi';
+
+  @override
+  String get appLockEnable => 'Uygulamayı kilitle';
+
+  @override
+  String get appLockEnableSubtitle => 'Uygulama açılırken PIN iste';
+
+  @override
+  String get appLockLockOnResume => 'Uygulamaya dönünce kilitle';
+
+  @override
+  String get appLockSetPin => 'PIN belirle';
+
+  @override
+  String get appLockChangePin => 'PIN değiştir';
+
+  @override
+  String get appLockPinHint => '4–8 haneli sayısal PIN';
+
+  @override
+  String get appLockPinConfirm => 'PIN\'i onayla';
+
+  @override
+  String get appLockPinMismatch => 'İki PIN uyuşmuyor';
+
+  @override
+  String get appLockPinWrong => 'Yanlış PIN, tekrar deneyin';
+
+  @override
+  String get appLockUnlock => 'Kilidi açmak için PIN girin';
+
+  @override
+  String get appLockRemovePin => 'Kilidi kapat ve PIN\'i sil';
+
+  @override
+  String get appLockSaved => 'PIN kaydedildi';
 }

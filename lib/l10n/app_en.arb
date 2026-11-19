@@ -22739,5 +22739,57 @@
   "backupMacKeychainAccessDenied": "macOS denied access to the backup password. If a system prompt appears, allow Kelivo to access it. You can also check the default keychain and the password item’s permissions in Keychain Access.",
   "@backupMacKeychainAccessDenied": {
     "description": "Backup password error when macOS denied access even though the default keychain was reported unlocked. Covers access denied by item permissions or an unusable login keychain without assuming that the user cancelled."
+  },
+  "appLockTitle": "App Lock",
+  "@appLockTitle": {
+    "description": "Menu item and settings page title for the app lock feature that gates the whole app behind a PIN."
+  },
+  "appLockEnable": "Lock this app",
+  "@appLockEnable": {
+    "description": "Toggle row label: turn app lock on or off. Enabling requires a PIN to be set first."
+  },
+  "appLockEnableSubtitle": "Require a PIN when opening the app",
+  "@appLockEnableSubtitle": {
+    "description": "Subtitle under the enable toggle explaining that the app asks for a PIN on launch."
+  },
+  "appLockLockOnResume": "Lock when returning to app",
+  "@appLockLockOnResume": {
+    "description": "Toggle: re-lock the app when it comes back to the foreground after being backgrounded."
+  },
+  "appLockSetPin": "Set PIN",
+  "@appLockSetPin": {
+    "description": "Button/field label to create a numeric unlock PIN."
+  },
+  "appLockChangePin": "Change PIN",
+  "@appLockChangePin": {
+    "description": "Button/field label to replace the existing unlock PIN."
+  },
+  "appLockPinHint": "4–8 digit numeric PIN",
+  "@appLockPinHint": {
+    "description": "Hint shown in the PIN entry field: only digits, four to eight characters."
+  },
+  "appLockPinConfirm": "Confirm PIN",
+  "@appLockPinConfirm": {
+    "description": "Field label asking the user to re-enter the PIN to confirm it matches."
+  },
+  "appLockPinMismatch": "The two PINs do not match",
+  "@appLockPinMismatch": {
+    "description": "Error shown when the confirmation PIN differs from the first entry."
+  },
+  "appLockPinWrong": "Incorrect PIN, try again",
+  "@appLockPinWrong": {
+    "description": "Error shown on the unlock screen when the entered PIN does not match the saved hash."
+  },
+  "appLockUnlock": "Enter PIN to unlock",
+  "@appLockUnlock": {
+    "description": "Heading on the lock screen shown before the app content is unlocked."
+  },
+  "appLockRemovePin": "Turn off lock and remove PIN",
+  "@appLockRemovePin": {
+    "description": "Destructive action that disables app lock and deletes the saved PIN."
+  },
+  "appLockSaved": "PIN saved",
+  "@appLockSaved": {
+    "description": "Snackbar confirmation after the PIN has been saved."
   }
 }

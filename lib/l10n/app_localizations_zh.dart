@@ -16545,6 +16545,45 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS 拒绝访问备份密码。如果出现系统提示，请允许 Kelivo 访问。你也可以在「钥匙串访问」中检查默认钥匙串和备份密码项目的权限。';
+
+  @override
+  String get appLockTitle => '应用锁';
+
+  @override
+  String get appLockEnable => '启用应用锁';
+
+  @override
+  String get appLockEnableSubtitle => '打开应用时需要输入密码';
+
+  @override
+  String get appLockLockOnResume => '回到应用时重新锁定';
+
+  @override
+  String get appLockSetPin => '设置密码';
+
+  @override
+  String get appLockChangePin => '修改密码';
+
+  @override
+  String get appLockPinHint => '4–8 位数字密码';
+
+  @override
+  String get appLockPinConfirm => '确认密码';
+
+  @override
+  String get appLockPinMismatch => '两次输入的密码不一致';
+
+  @override
+  String get appLockPinWrong => '密码错误，请重试';
+
+  @override
+  String get appLockUnlock => '输入密码解锁';
+
+  @override
+  String get appLockRemovePin => '关闭锁定并删除密码';
+
+  @override
+  String get appLockSaved => '密码已保存';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hans`).
@@ -33088,6 +33127,45 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS 拒绝访问备份密码。如果出现系统提示，请允许 Kelivo 访问。你也可以在「钥匙串访问」中检查默认钥匙串和备份密码项目的权限。';
+
+  @override
+  String get appLockTitle => '应用锁';
+
+  @override
+  String get appLockEnable => '启用应用锁';
+
+  @override
+  String get appLockEnableSubtitle => '打开应用时需要输入密码';
+
+  @override
+  String get appLockLockOnResume => '回到应用时重新锁定';
+
+  @override
+  String get appLockSetPin => '设置密码';
+
+  @override
+  String get appLockChangePin => '修改密码';
+
+  @override
+  String get appLockPinHint => '4–8 位数字密码';
+
+  @override
+  String get appLockPinConfirm => '确认密码';
+
+  @override
+  String get appLockPinMismatch => '两次输入的密码不一致';
+
+  @override
+  String get appLockPinWrong => '密码错误，请重试';
+
+  @override
+  String get appLockUnlock => '输入密码解锁';
+
+  @override
+  String get appLockRemovePin => '关闭锁定并删除密码';
+
+  @override
+  String get appLockSaved => '密码已保存';
 }
 
 /// The translations for Chinese, using the Han script (`zh_Hant`).
@@ -49666,4 +49744,43 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS 拒絕存取備份密碼。如果出現系統提示，請允許 Kelivo 存取。你也可以在「鑰匙串存取」中檢查預設鑰匙串和備份密碼項目的權限。';
+
+  @override
+  String get appLockTitle => '應用鎖';
+
+  @override
+  String get appLockEnable => '啟用應用鎖';
+
+  @override
+  String get appLockEnableSubtitle => '打開應用時需要輸入密碼';
+
+  @override
+  String get appLockLockOnResume => '回到應用時重新鎖定';
+
+  @override
+  String get appLockSetPin => '設定密碼';
+
+  @override
+  String get appLockChangePin => '修改密碼';
+
+  @override
+  String get appLockPinHint => '4–8 位數字密碼';
+
+  @override
+  String get appLockPinConfirm => '確認密碼';
+
+  @override
+  String get appLockPinMismatch => '兩次輸入的密碼不一致';
+
+  @override
+  String get appLockPinWrong => '密碼錯誤，請重試';
+
+  @override
+  String get appLockUnlock => '輸入密碼解鎖';
+
+  @override
+  String get appLockRemovePin => '關閉鎖定並刪除密碼';
+
+  @override
+  String get appLockSaved => '密碼已儲存';
 }

@@ -17797,4 +17797,43 @@ class AppLocalizationsRu extends AppLocalizations {
   @override
   String get backupMacKeychainAccessDenied =>
       'macOS запретила доступ к паролю резервной копии. Если появится системный запрос, разрешите Kelivo доступ к нему. Также можно проверить связку ключей по умолчанию и разрешения элемента пароля в «Связке ключей».';
+
+  @override
+  String get appLockTitle => 'Блокировка приложения';
+
+  @override
+  String get appLockEnable => 'Блокировать приложение';
+
+  @override
+  String get appLockEnableSubtitle => 'Запрашивать PIN при открытии приложения';
+
+  @override
+  String get appLockLockOnResume => 'Блокировать при возврате в приложение';
+
+  @override
+  String get appLockSetPin => 'Задать PIN';
+
+  @override
+  String get appLockChangePin => 'Изменить PIN';
+
+  @override
+  String get appLockPinHint => 'PIN из 4–8 цифр';
+
+  @override
+  String get appLockPinConfirm => 'Подтвердить PIN';
+
+  @override
+  String get appLockPinMismatch => 'PIN не совпадает';
+
+  @override
+  String get appLockPinWrong => 'Неверный PIN, попробуйте ещё раз';
+
+  @override
+  String get appLockUnlock => 'Введите PIN для разблокировки';
+
+  @override
+  String get appLockRemovePin => 'Отключить блокировку и удалить PIN';
+
+  @override
+  String get appLockSaved => 'PIN сохранён';
 }

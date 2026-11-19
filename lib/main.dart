@@ -1,5 +1,7 @@
 import 'features/side_panel/desktop_side_panel_controller.dart';
 import 'core/services/scheduled_tasks_service.dart';
+import 'core/services/app_lock_controller.dart';
+import 'features/home/widgets/app_lock_gate.dart';
 import 'core/services/auth/provider_oauth_service.dart';
 import 'package:Kelivo/core/services/sandbox/workspace_channel.dart';
 import 'package:Kelivo/core/providers/external_mounts_provider.dart';
@@ -1074,6 +1076,9 @@ class MyApp extends StatelessWidget {
             },
           ),
         ),
+        ChangeNotifierProvider(
+          create: (_) => AppLockController(businessPreferences)..load(),
+        ),
       ],
       child: Builder(
         builder: (context) {
@@ -1127,261 +1132,272 @@ class MyApp extends StatelessWidget {
               } catch (_) {}
             });
           }
-          return DynamicColorBuilder(
-            builder: (lightDynamic, darkDynamic) {
-              // if (lightDynamic != null) {
-              //   debugPrint('[DynamicColor] Light dynamic detected. primary=${lightDynamic.primary.value.toRadixString(16)} surface=${lightDynamic.surface.value.toRadixString(16)}');
-              // } else {
-              //   debugPrint('[DynamicColor] Light dynamic not available');
-              // }
-              // if (darkDynamic != null) {
-              //   debugPrint('[DynamicColor] Dark dynamic detected. primary=${darkDynamic.primary.value.toRadixString(16)} surface=${darkDynamic.surface.value.toRadixString(16)}');
-              // } else {
-              //   debugPrint('[DynamicColor] Dark dynamic not available');
-              // }
-              final isAndroid =
-                  Theme.of(context).platform == TargetPlatform.android;
-              // Update dynamic color capability for settings UI (avoid notify during build)
-              final dynSupported =
-                  isAndroid && (lightDynamic != null || darkDynamic != null);
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                try {
-                  settings.setDynamicColorSupported(dynSupported);
-                } catch (_) {}
-              });
+          return AppLockGate(
+            child: DynamicColorBuilder(
+              builder: (lightDynamic, darkDynamic) {
+                // if (lightDynamic != null) {
+                //   debugPrint('[DynamicColor] Light dynamic detected. primary=${lightDynamic.primary.value.toRadixString(16)} surface=${lightDynamic.surface.value.toRadixString(16)}');
+                // } else {
+                //   debugPrint('[DynamicColor] Light dynamic not available');
+                // }
+                // if (darkDynamic != null) {
+                //   debugPrint('[DynamicColor] Dark dynamic detected. primary=${darkDynamic.primary.value.toRadixString(16)} surface=${darkDynamic.surface.value.toRadixString(16)}');
+                // } else {
+                //   debugPrint('[DynamicColor] Dark dynamic not available');
+                // }
+                final isAndroid =
+                    Theme.of(context).platform == TargetPlatform.android;
+                // Update dynamic color capability for settings UI (avoid notify during build)
+                final dynSupported =
+                    isAndroid && (lightDynamic != null || darkDynamic != null);
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  try {
+                    settings.setDynamicColorSupported(dynSupported);
+                  } catch (_) {}
+                });
 
-              // Initialize desktop hotkeys on supported platforms
-              WidgetsBinding.instance.addPostFrameCallback((_) async {
-                try {
-                  final isDesktop =
-                      !kIsWeb &&
-                      (defaultTargetPlatform == TargetPlatform.windows ||
-                          defaultTargetPlatform == TargetPlatform.macOS ||
-                          defaultTargetPlatform == TargetPlatform.linux);
-                  if (isDesktop) {
-                    await context.read<HotkeyProvider>().initialize();
-                  }
-                } catch (_) {}
-              });
+                // Initialize desktop hotkeys on supported platforms
+                WidgetsBinding.instance.addPostFrameCallback((_) async {
+                  try {
+                    final isDesktop =
+                        !kIsWeb &&
+                        (defaultTargetPlatform == TargetPlatform.windows ||
+                            defaultTargetPlatform == TargetPlatform.macOS ||
+                            defaultTargetPlatform == TargetPlatform.linux);
+                    if (isDesktop) {
+                      await context.read<HotkeyProvider>().initialize();
+                    }
+                  } catch (_) {}
+                });
 
-              final useDyn = isAndroid && settings.useDynamicColor;
-              final custom = settings.selectedCustomTheme;
-              final palette =
-                  settings.themePaletteId == ThemePalettes.customPaletteId &&
-                      custom != null
-                  ? buildCustomThemePalette(custom)
-                  : ThemePalettes.byId(settings.themePaletteId);
+                final useDyn = isAndroid && settings.useDynamicColor;
+                final custom = settings.selectedCustomTheme;
+                final palette =
+                    settings.themePaletteId == ThemePalettes.customPaletteId &&
+                        custom != null
+                    ? buildCustomThemePalette(custom)
+                    : ThemePalettes.byId(settings.themePaletteId);
 
-              final light = buildLightThemeForScheme(
-                palette.light,
-                dynamicScheme: useDyn ? lightDynamic : null,
-                pureBackground: settings.usePureBackground,
-                layeredSurfaces: settings.useLayeredSurfaces,
-              );
-              final dark = buildDarkThemeForScheme(
-                palette.dark,
-                dynamicScheme: useDyn ? darkDynamic : null,
-                pureBackground: settings.usePureBackground,
-                layeredSurfaces: settings.useLayeredSurfaces,
-              );
-              // Resolve effective app font family (system/local alias)
-              String? effectiveAppFontFamily() {
-                final fam = settings.appFontFamily;
-                if (fam == null || fam.isEmpty) return null;
-                return fam;
-              }
-
-              final effectiveAppFont = effectiveAppFontFamily();
-
-              // Apply user-selected app font to theme text styles and app bar
-              ThemeData applyAppFont(ThemeData base) {
-                if (effectiveAppFont == null || effectiveAppFont.isEmpty) {
-                  return base;
+                final light = buildLightThemeForScheme(
+                  palette.light,
+                  dynamicScheme: useDyn ? lightDynamic : null,
+                  pureBackground: settings.usePureBackground,
+                  layeredSurfaces: settings.useLayeredSurfaces,
+                );
+                final dark = buildDarkThemeForScheme(
+                  palette.dark,
+                  dynamicScheme: useDyn ? darkDynamic : null,
+                  pureBackground: settings.usePureBackground,
+                  layeredSurfaces: settings.useLayeredSurfaces,
+                );
+                // Resolve effective app font family (system/local alias)
+                String? effectiveAppFontFamily() {
+                  final fam = settings.appFontFamily;
+                  if (fam == null || fam.isEmpty) return null;
+                  return fam;
                 }
-                TextStyle? withFamily(TextStyle? s) =>
-                    s?.copyWith(fontFamily: effectiveAppFont);
-                TextTheme apply(TextTheme t) => t.copyWith(
-                  displayLarge: withFamily(t.displayLarge),
-                  displayMedium: withFamily(t.displayMedium),
-                  displaySmall: withFamily(t.displaySmall),
-                  headlineLarge: withFamily(t.headlineLarge),
-                  headlineMedium: withFamily(t.headlineMedium),
-                  headlineSmall: withFamily(t.headlineSmall),
-                  titleLarge: withFamily(t.titleLarge),
-                  titleMedium: withFamily(t.titleMedium),
-                  titleSmall: withFamily(t.titleSmall),
-                  bodyLarge: withFamily(t.bodyLarge),
-                  bodyMedium: withFamily(t.bodyMedium),
-                  bodySmall: withFamily(t.bodySmall),
-                  labelLarge: withFamily(t.labelLarge),
-                  labelMedium: withFamily(t.labelMedium),
-                  labelSmall: withFamily(t.labelSmall),
-                );
-                final bar = base.appBarTheme;
-                final appBar = bar.copyWith(
-                  titleTextStyle: (bar.titleTextStyle ?? const TextStyle())
-                      .copyWith(fontFamily: effectiveAppFont),
-                  toolbarTextStyle: (bar.toolbarTextStyle ?? const TextStyle())
-                      .copyWith(fontFamily: effectiveAppFont),
-                );
-                // Apply as default family to all text in ThemeData
-                return base.copyWith(
-                  textTheme: apply(base.textTheme),
-                  primaryTextTheme: apply(base.primaryTextTheme),
-                  appBarTheme: appBar,
-                );
-              }
 
-              final themedLight = applyAppFont(light);
-              final themedDark = applyAppFont(dark);
-              // Log top-level colors likely used by widgets (card/bg/shadow approximations)
-              // debugPrint('[Theme/App] Light scaffoldBg=${light.colorScheme.surface.value.toRadixString(16)} card≈${light.colorScheme.surface.value.toRadixString(16)} shadow=${light.colorScheme.shadow.value.toRadixString(16)}');
-              // debugPrint('[Theme/App] Dark scaffoldBg=${dark.colorScheme.surface.value.toRadixString(16)} card≈${dark.colorScheme.surface.value.toRadixString(16)} shadow=${dark.colorScheme.shadow.value.toRadixString(16)}');
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                title: 'Kelivo',
-                navigatorKey: rootNavigatorKey,
-                // App UI language; null = follow system (respects iOS per-app language)
-                locale: settings.appLocaleForMaterialApp,
-                supportedLocales: AppLocalizations.supportedLocales,
-                localizationsDelegates: AppLocalizations.localizationsDelegates,
-                theme: themedLight,
-                darkTheme: themedDark,
-                themeMode: settings.themeMode,
-                navigatorObservers: <NavigatorObserver>[routeObserver],
-                home: RestoreOutcomeNotice(
-                  outcome: restoreOutcome,
-                  child: _selectHome(),
-                ),
-                builder: (ctx, child) {
-                  final appTheme = Theme.of(ctx);
-                  final bright = appTheme.brightness;
-                  final overlay = bright == Brightness.dark
-                      ? const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.light,
-                          statusBarBrightness: Brightness.dark,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.light,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        )
-                      : const SystemUiOverlayStyle(
-                          statusBarColor: Colors.transparent,
-                          statusBarIconBrightness: Brightness.dark,
-                          statusBarBrightness: Brightness.light,
-                          systemNavigationBarColor: Colors.transparent,
-                          systemNavigationBarIconBrightness: Brightness.dark,
-                          systemNavigationBarDividerColor: Colors.transparent,
-                          systemNavigationBarContrastEnforced: false,
-                        );
-                  // Ensure localized defaults (assistants and chat default title) after first frame
-                  if (!_didEnsureAssistants) {
-                    _didEnsureAssistants = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      try {
-                        ctx.read<AssistantProvider>().ensureDefaults(ctx);
-                      } catch (_) {}
-                      try {
-                        ctx.read<ChatService>().setDefaultConversationTitle(
-                          AppLocalizations.of(
-                            ctx,
-                          )!.chatServiceDefaultConversationTitle,
-                        );
-                      } catch (_) {}
-                      try {
-                        ctx.read<UserProvider>().setDefaultNameIfUnset(
-                          AppLocalizations.of(ctx)!.userProviderDefaultUserName,
-                        );
-                      } catch (_) {}
-                    });
-                  }
-                  if (!_didWireWorkspace) {
-                    _didWireWorkspace = true;
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _wireWorkspaceServices(ctx);
-                    });
-                  }
+                final effectiveAppFont = effectiveAppFontFamily();
 
-                  // Desktop tray + close behaviour (minimize to tray) sync
-                  final l10n = AppLocalizations.of(ctx);
-                  if (l10n != null) {
-                    final backgroundSettings = ctx.watch<SettingsProvider>();
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (!ctx.mounted) return;
-                      final coordinator = MobileBackgroundCoordinator.instance;
-                      coordinator.pauseSpeech = () async {
-                        final tts = ctx.read<TtsProvider>();
-                        if (tts.playbackState.isActive || tts.isSpeaking) {
-                          await tts.pause();
-                        }
-                      };
-                      unawaited(
-                        coordinator.configureFromSettings(
-                          backgroundSettings,
-                          l10n,
-                          overlayProgressColor: appTheme.colorScheme.primary,
+                // Apply user-selected app font to theme text styles and app bar
+                ThemeData applyAppFont(ThemeData base) {
+                  if (effectiveAppFont == null || effectiveAppFont.isEmpty) {
+                    return base;
+                  }
+                  TextStyle? withFamily(TextStyle? s) =>
+                      s?.copyWith(fontFamily: effectiveAppFont);
+                  TextTheme apply(TextTheme t) => t.copyWith(
+                    displayLarge: withFamily(t.displayLarge),
+                    displayMedium: withFamily(t.displayMedium),
+                    displaySmall: withFamily(t.displaySmall),
+                    headlineLarge: withFamily(t.headlineLarge),
+                    headlineMedium: withFamily(t.headlineMedium),
+                    headlineSmall: withFamily(t.headlineSmall),
+                    titleLarge: withFamily(t.titleLarge),
+                    titleMedium: withFamily(t.titleMedium),
+                    titleSmall: withFamily(t.titleSmall),
+                    bodyLarge: withFamily(t.bodyLarge),
+                    bodyMedium: withFamily(t.bodyMedium),
+                    bodySmall: withFamily(t.bodySmall),
+                    labelLarge: withFamily(t.labelLarge),
+                    labelMedium: withFamily(t.labelMedium),
+                    labelSmall: withFamily(t.labelSmall),
+                  );
+                  final bar = base.appBarTheme;
+                  final appBar = bar.copyWith(
+                    titleTextStyle: (bar.titleTextStyle ?? const TextStyle())
+                        .copyWith(fontFamily: effectiveAppFont),
+                    toolbarTextStyle:
+                        (bar.toolbarTextStyle ?? const TextStyle()).copyWith(
+                          fontFamily: effectiveAppFont,
                         ),
-                      );
-                    });
-                    WidgetsBinding.instance.addPostFrameCallback((_) async {
-                      try {
-                        final isDesktop =
-                            !kIsWeb &&
-                            (defaultTargetPlatform == TargetPlatform.windows ||
-                                defaultTargetPlatform == TargetPlatform.macOS ||
-                                defaultTargetPlatform == TargetPlatform.linux);
-                        if (!isDesktop) return;
-                        final sp = ctx.read<SettingsProvider>();
-                        await sp.loaded;
-                        final tray = DesktopTrayController.instance;
-                        await tray.syncFromSettings(
-                          l10n,
-                          showTray: sp.desktopShowTray,
-                          minimizeToTrayOnClose:
-                              sp.desktopMinimizeToTrayOnClose,
-                        );
-                        if (DesktopStartupService.finishLaunch(
-                          hideToTray: sp.desktopAutostartHidden,
-                          trayReady:
-                              sp.desktopShowTray &&
-                              tray.isReady &&
-                              (!DesktopStartupService.deferWindow ||
-                                  await DesktopStartupService.hasTrayHost()),
-                        )) {
-                          await windowManager.show();
-                          await windowManager.focus();
-                        }
-                      } catch (_) {
-                        if (DesktopStartupService.deferWindow) {
-                          await _initRestoreFailureWindow();
-                        }
-                      }
-                    });
-                  }
+                  );
+                  // Apply as default family to all text in ThemeData
+                  return base.copyWith(
+                    textTheme: apply(base.textTheme),
+                    primaryTextTheme: apply(base.primaryTextTheme),
+                    appBarTheme: appBar,
+                  );
+                }
 
-                  final appWithOverlays = FloatingIpadPadding(
-                    child: LocalSnapshotScheduler(
-                      child: ExternalBackupAutoScheduler(
-                        child: AppOverlays(
-                          child: child ?? const SizedBox.shrink(),
+                final themedLight = applyAppFont(light);
+                final themedDark = applyAppFont(dark);
+                // Log top-level colors likely used by widgets (card/bg/shadow approximations)
+                // debugPrint('[Theme/App] Light scaffoldBg=${light.colorScheme.surface.value.toRadixString(16)} card≈${light.colorScheme.surface.value.toRadixString(16)} shadow=${light.colorScheme.shadow.value.toRadixString(16)}');
+                // debugPrint('[Theme/App] Dark scaffoldBg=${dark.colorScheme.surface.value.toRadixString(16)} card≈${dark.colorScheme.surface.value.toRadixString(16)} shadow=${dark.colorScheme.shadow.value.toRadixString(16)}');
+                return MaterialApp(
+                  debugShowCheckedModeBanner: false,
+                  title: 'Kelivo',
+                  navigatorKey: rootNavigatorKey,
+                  // App UI language; null = follow system (respects iOS per-app language)
+                  locale: settings.appLocaleForMaterialApp,
+                  supportedLocales: AppLocalizations.supportedLocales,
+                  localizationsDelegates:
+                      AppLocalizations.localizationsDelegates,
+                  theme: themedLight,
+                  darkTheme: themedDark,
+                  themeMode: settings.themeMode,
+                  navigatorObservers: <NavigatorObserver>[routeObserver],
+                  home: RestoreOutcomeNotice(
+                    outcome: restoreOutcome,
+                    child: _selectHome(),
+                  ),
+                  builder: (ctx, child) {
+                    final appTheme = Theme.of(ctx);
+                    final bright = appTheme.brightness;
+                    final overlay = bright == Brightness.dark
+                        ? const SystemUiOverlayStyle(
+                            statusBarColor: Colors.transparent,
+                            statusBarIconBrightness: Brightness.light,
+                            statusBarBrightness: Brightness.dark,
+                            systemNavigationBarColor: Colors.transparent,
+                            systemNavigationBarIconBrightness: Brightness.light,
+                            systemNavigationBarDividerColor: Colors.transparent,
+                            systemNavigationBarContrastEnforced: false,
+                          )
+                        : const SystemUiOverlayStyle(
+                            statusBarColor: Colors.transparent,
+                            statusBarIconBrightness: Brightness.dark,
+                            statusBarBrightness: Brightness.light,
+                            systemNavigationBarColor: Colors.transparent,
+                            systemNavigationBarIconBrightness: Brightness.dark,
+                            systemNavigationBarDividerColor: Colors.transparent,
+                            systemNavigationBarContrastEnforced: false,
+                          );
+                    // Ensure localized defaults (assistants and chat default title) after first frame
+                    if (!_didEnsureAssistants) {
+                      _didEnsureAssistants = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        try {
+                          ctx.read<AssistantProvider>().ensureDefaults(ctx);
+                        } catch (_) {}
+                        try {
+                          ctx.read<ChatService>().setDefaultConversationTitle(
+                            AppLocalizations.of(
+                              ctx,
+                            )!.chatServiceDefaultConversationTitle,
+                          );
+                        } catch (_) {}
+                        try {
+                          ctx.read<UserProvider>().setDefaultNameIfUnset(
+                            AppLocalizations.of(
+                              ctx,
+                            )!.userProviderDefaultUserName,
+                          );
+                        } catch (_) {}
+                      });
+                    }
+                    if (!_didWireWorkspace) {
+                      _didWireWorkspace = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        _wireWorkspaceServices(ctx);
+                      });
+                    }
+
+                    // Desktop tray + close behaviour (minimize to tray) sync
+                    final l10n = AppLocalizations.of(ctx);
+                    if (l10n != null) {
+                      final backgroundSettings = ctx.watch<SettingsProvider>();
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!ctx.mounted) return;
+                        final coordinator =
+                            MobileBackgroundCoordinator.instance;
+                        coordinator.pauseSpeech = () async {
+                          final tts = ctx.read<TtsProvider>();
+                          if (tts.playbackState.isActive || tts.isSpeaking) {
+                            await tts.pause();
+                          }
+                        };
+                        unawaited(
+                          coordinator.configureFromSettings(
+                            backgroundSettings,
+                            l10n,
+                            overlayProgressColor: appTheme.colorScheme.primary,
+                          ),
+                        );
+                      });
+                      WidgetsBinding.instance.addPostFrameCallback((_) async {
+                        try {
+                          final isDesktop =
+                              !kIsWeb &&
+                              (defaultTargetPlatform ==
+                                      TargetPlatform.windows ||
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.macOS ||
+                                  defaultTargetPlatform ==
+                                      TargetPlatform.linux);
+                          if (!isDesktop) return;
+                          final sp = ctx.read<SettingsProvider>();
+                          await sp.loaded;
+                          final tray = DesktopTrayController.instance;
+                          await tray.syncFromSettings(
+                            l10n,
+                            showTray: sp.desktopShowTray,
+                            minimizeToTrayOnClose:
+                                sp.desktopMinimizeToTrayOnClose,
+                          );
+                          if (DesktopStartupService.finishLaunch(
+                            hideToTray: sp.desktopAutostartHidden,
+                            trayReady:
+                                sp.desktopShowTray &&
+                                tray.isReady &&
+                                (!DesktopStartupService.deferWindow ||
+                                    await DesktopStartupService.hasTrayHost()),
+                          )) {
+                            await windowManager.show();
+                            await windowManager.focus();
+                          }
+                        } catch (_) {
+                          if (DesktopStartupService.deferWindow) {
+                            await _initRestoreFailureWindow();
+                          }
+                        }
+                      });
+                    }
+
+                    final appWithOverlays = FloatingIpadPadding(
+                      child: LocalSnapshotScheduler(
+                        child: ExternalBackupAutoScheduler(
+                          child: AppOverlays(
+                            child: child ?? const SizedBox.shrink(),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                  // Enforce app font as a default across the tree for Texts without explicit family
-                  return AnnotatedRegion<SystemUiOverlayStyle>(
-                    value: overlay,
-                    child: effectiveAppFont == null
-                        ? appWithOverlays
-                        : DefaultTextStyle.merge(
-                            style: TextStyle(fontFamily: effectiveAppFont),
-                            child: appWithOverlays,
-                          ),
-                  );
-                },
-              );
-            },
+                    );
+                    // Enforce app font as a default across the tree for Texts without explicit family
+                    return AnnotatedRegion<SystemUiOverlayStyle>(
+                      value: overlay,
+                      child: effectiveAppFont == null
+                          ? appWithOverlays
+                          : DefaultTextStyle.merge(
+                              style: TextStyle(fontFamily: effectiveAppFont),
+                              child: appWithOverlays,
+                            ),
+                    );
+                  },
+                );
+              },
+            ),
           );
         },
       ),

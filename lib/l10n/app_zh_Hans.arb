@@ -6328,5 +6328,18 @@
   "backupEncryptionChangePassword": "更改备份密码",
   "backupMacKeychainNeedsUnlock": "macOS 无法解锁登录钥匙串。请打开「钥匙串访问」，解锁「登录」，再回到 Kelivo 重试。",
   "backupMacOpenKeychainAccess": "打开钥匙串访问",
-  "backupMacKeychainAccessDenied": "macOS 拒绝访问备份密码。如果出现系统提示，请允许 Kelivo 访问。你也可以在「钥匙串访问」中检查默认钥匙串和备份密码项目的权限。"
+  "backupMacKeychainAccessDenied": "macOS 拒绝访问备份密码。如果出现系统提示，请允许 Kelivo 访问。你也可以在「钥匙串访问」中检查默认钥匙串和备份密码项目的权限。",
+  "appLockTitle": "应用锁",
+  "appLockEnable": "启用应用锁",
+  "appLockEnableSubtitle": "打开应用时需要输入密码",
+  "appLockLockOnResume": "回到应用时重新锁定",
+  "appLockSetPin": "设置密码",
+  "appLockChangePin": "修改密码",
+  "appLockPinHint": "4–8 位数字密码",
+  "appLockPinConfirm": "确认密码",
+  "appLockPinMismatch": "两次输入的密码不一致",
+  "appLockPinWrong": "密码错误，请重试",
+  "appLockUnlock": "输入密码解锁",
+  "appLockRemovePin": "关闭锁定并删除密码",
+  "appLockSaved": "密码已保存"
 }
