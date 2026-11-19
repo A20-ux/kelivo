@@ -1,3 +1,4 @@
+import 'dart:async' show unawaited;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -49,7 +50,9 @@ class _AppLockGateState extends State<AppLockGate> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final lock = context.watch<AppLockController>();
-    if (!lock.enabled || _unlocked) return widget.child;
+    // AI 主动锁定独立于 PIN 总开关；总开关开启时，未解锁的本次会话也上锁。
+    final locked = lock.aiLockActive || (lock.enabled && !_unlocked);
+    if (!locked) return widget.child;
     return _LockScreen(
       controller: lock,
       onUnlocked: () => setState(() => _unlocked = true),
@@ -81,6 +84,7 @@ class _LockScreenState extends State<_LockScreen> {
     final l10n = AppLocalizations.of(context)!;
     final pin = _pinCtrl.text.trim();
     if (widget.controller.verifyPin(pin)) {
+      unawaited(widget.controller.unlock());
       widget.onUnlocked();
     } else {
       setState(() {

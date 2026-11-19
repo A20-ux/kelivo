@@ -30,6 +30,7 @@ class LocalToolNames {
   static const String remindersQuery = 'reminders_query';
   static const String remindersCreate = 'reminders_create';
   static const String remindersComplete = 'reminders_complete';
+  static const String appLockControl = 'app_lock_control';
 
   static const List<String> all = [
     timeInfo,
@@ -48,6 +49,7 @@ class LocalToolNames {
     remindersQuery,
     remindersCreate,
     remindersComplete,
+    appLockControl,
   ];
 
   static const List<String> requiresUserApproval = [
@@ -478,6 +480,8 @@ class LocalToolsService {
         return _remindersCreateDefinition();
       case LocalToolNames.remindersComplete:
         return _remindersCompleteDefinition;
+      case LocalToolNames.appLockControl:
+        return _appLockControlDefinition;
       default:
         throw ArgumentError.value(name, 'name', 'Unknown local tool');
     }
@@ -710,6 +714,31 @@ class LocalToolsService {
             'type': 'string',
             'description':
                 'Text to write to the clipboard. Required for write.',
+          },
+        },
+        'required': ['action'],
+      },
+    },
+  };
+
+  static const Map<String, dynamic> _appLockControlDefinition = {
+    'type': 'function',
+    'function': {
+      'name': LocalToolNames.appLockControl,
+      'description':
+          'Lock or unlock this app on behalf of the user. action: lock shows the app lock screen; optional minutes sets a timed lock that unlocks automatically after that many minutes (omit for a lock that stays until unlock). action: unlock removes the lock. Only use this when the roleplay or the user asks to lock/unlock the app.',
+      'parameters': {
+        'type': 'object',
+        'properties': {
+          'action': {
+            'type': 'string',
+            'enum': ['lock', 'unlock'],
+            'description': 'Operation: lock the app, or unlock it.',
+          },
+          'minutes': {
+            'type': 'number',
+            'description':
+                'Optional lock duration in minutes for action: lock. Omit to stay locked until unlocked.',
           },
         },
         'required': ['action'],

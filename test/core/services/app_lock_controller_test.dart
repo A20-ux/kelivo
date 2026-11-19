@@ -71,4 +71,43 @@ void main() {
     await reloaded.load();
     expect(reloaded.lockOnResume, isFalse);
   });
+
+  test('AI can lock indefinitely and unlock', () async {
+    final lock = AppLockController(prefs);
+    await lock.load();
+
+    await lock.lockFor();
+    expect(lock.aiLockActive, isTrue);
+    expect(lock.aiLockUntil, isNull);
+
+    await lock.unlock();
+    expect(lock.aiLockActive, isFalse);
+    expect(lock.aiLockUntil, isNull);
+  });
+
+  test('AI timed lock stores an until timestamp', () async {
+    final lock = AppLockController(prefs);
+    await lock.load();
+
+    await lock.lockFor(duration: const Duration(minutes: 5));
+    expect(lock.aiLockActive, isTrue);
+    expect(lock.aiLockUntil, isNotNull);
+
+    final reloaded = AppLockController(prefs);
+    await reloaded.load();
+    expect(reloaded.aiLockActive, isTrue);
+    expect(reloaded.aiLockUntil, isNotNull);
+  });
+
+  test('expired AI lock is cleared on load', () async {
+    // A timestamp in the past should not keep the app locked after restart.
+    await prefs.setString(
+      'app_lock_ai_until_v1',
+      DateTime.now().subtract(const Duration(minutes: 1)).toIso8601String(),
+    );
+    final reloaded = AppLockController(prefs);
+    await reloaded.load();
+    expect(reloaded.aiLockActive, isFalse);
+    expect(reloaded.aiLockUntil, isNull);
+  });
 }

@@ -31,6 +31,7 @@ import '../../../core/services/search/web_fetch_service.dart';
 import '../../../core/services/search/web_fetch_tool_service.dart';
 import '../../../core/services/tools/tool_schema_overrides.dart';
 import '../../../core/services/tools/view_image_tool.dart';
+import '../../../core/services/app_lock_controller.dart';
 import '../../../core/services/skills/skills_service.dart';
 import '../../../core/services/workspace/tool_run_registry.dart';
 import '../../../core/services/workspace/workspace_runtime.dart';
@@ -731,6 +732,55 @@ class ToolHandlerService {
                 tool: name,
               );
             }
+          }
+
+          if (name == LocalToolNames.appLockControl) {
+            final current = assistant == null
+                ? null
+                : assistantProvider.getById(assistant.id);
+            if (current == null || !current.localToolIds.contains(name)) {
+              return _toolError(
+                error: 'permission_denied',
+                message: 'App lock control is disabled for this assistant.',
+                tool: name,
+              );
+            }
+            AppLockController? lock;
+            try {
+              // ignore: use_build_context_synchronously
+              lock = contextProvider.read<AppLockController>();
+            } catch (_) {
+              lock = null;
+            }
+            if (lock == null) {
+              return _toolError(
+                error: 'tool_unavailable',
+                message: 'App lock controller is unavailable.',
+                tool: name,
+              );
+            }
+            final action = (args['action'] ?? '').toString().trim();
+            if (action == 'unlock') {
+              await lock.unlock();
+              return jsonEncode({'locked': false});
+            }
+            if (action == 'lock') {
+              Duration? duration;
+              final raw = args['minutes'];
+              if (raw is num && raw > 0) {
+                duration = Duration(minutes: raw.round());
+              }
+              await lock.lockFor(duration: duration);
+              return jsonEncode({
+                'locked': true,
+                'until': lock.aiLockUntil?.toIso8601String(),
+              });
+            }
+            return _toolError(
+              error: 'invalid_arguments',
+              message: 'action must be "lock" or "unlock".',
+              tool: name,
+            );
           }
 
           // Re-read phone-control permission on every call so disabling it also
