@@ -51,6 +51,9 @@ class _LocalToolsTab extends StatelessWidget {
     final remindersCompleteEnabled = assistant.localToolIds.contains(
       LocalToolNames.remindersComplete,
     );
+    final appLockEnabled = assistant.localToolIds.contains(
+      LocalToolNames.appLockControl,
+    );
 
     Future<void> toggleTool(String toolId, bool value) {
       return setLocalToolEnabled(
@@ -226,6 +229,15 @@ class _LocalToolsTab extends StatelessWidget {
                 enabled: remindersCompleteEnabled,
                 onChanged: (value) =>
                     toggleTool(LocalToolNames.remindersComplete, value),
+              ),
+              _iosDivider(context),
+              _LocalToolRow(
+                icon: Lucide.Lock,
+                title: l10n.appLockTitle,
+                subtitle: l10n.appLockEnableSubtitle,
+                enabled: appLockEnabled,
+                onChanged: (value) =>
+                    toggleTool(LocalToolNames.appLockControl, value),
               ),
             ],
             if (DeviceLocalTools.iosDeviceToolsSupported)
