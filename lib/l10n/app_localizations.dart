@@ -4342,6 +4342,24 @@ abstract class AppLocalizations {
   /// **'Import from Chatbox'**
   String get backupPageImportFromChatbox;
 
+  /// Button label and task title for importing chat history from a generic JSON export.
+  ///
+  /// In en, this message translates to:
+  /// **'Import chat history (JSON)'**
+  String get backupPageImportGeneric;
+
+  /// Subtitle listing the chat apps whose JSON exports can be imported.
+  ///
+  /// In en, this message translates to:
+  /// **'Kelivo, Operit, Risu, SillyTavern, DeepSeek and more'**
+  String get backupPageImportGenericSubtitle;
+
+  /// Result summary after a generic chat-history import; conversations and messages are imported counts.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported {conversations} conversations, {messages} messages'**
+  String backupPageImportGenericDone(int conversations, int messages);
+
   /// Section header for the backup reminder settings.
   ///
   /// In en, this message translates to:

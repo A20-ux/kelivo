@@ -33,6 +33,7 @@ import '../../../shared/widgets/loading_dialog_card.dart';
 import '../../../core/services/backup/cherry_importer.dart';
 import '../../../core/services/backup/chatbox_importer.dart';
 import '../../../core/services/backup/import_toolbox.dart';
+import '../../../core/services/backup/generic_chat_importer.dart';
 import '../backup_restore_error_message.dart';
 import '../import_toolbox_link.dart';
 import '../forward_compat_consent_dialog.dart';
@@ -1157,6 +1158,14 @@ class _BackupPageState extends State<BackupPage> {
           _iosDivider(context),
           _iosNavRow(
             context,
+            icon: Lucide.Braces,
+            label: l10n.backupPageImportGeneric,
+            subtitle: l10n.backupPageImportGenericSubtitle,
+            onTap: busy ? null : () => _doImportGeneric(context),
+          ),
+          _iosDivider(context),
+          _iosNavRow(
+            context,
             icon: Lucide.ExternalLink,
             label: l10n.backupPageImportFromOtherApps,
             subtitle: l10n.backupPageImportFromOtherAppsSubtitle,
@@ -1274,6 +1283,42 @@ class _BackupPageState extends State<BackupPage> {
           ' • Assistants: ${res.assistants}\n'
           ' • Conversations: ${res.conversations}\n'
           ' • Messages: ${res.messages}',
+    );
+  }
+
+  Future<void> _doImportGeneric(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return;
+    if (!context.mounted) return;
+
+    final l10n = AppLocalizations.of(context)!;
+    final cs = context.read<ChatService>();
+    final businessRepository = context.read<BusinessRepository>();
+    GenericChatImportResult? imported;
+    final ok = await runBackupTask(
+      context,
+      title: l10n.backupPageImportGeneric,
+      errorMessage: (error) => error.toString(),
+      task: (handle) async {
+        imported = await GenericChatImporter.importFromGeneric(
+          file: File(path),
+          businessRepository: businessRepository,
+          chatService: cs,
+        );
+      },
+    );
+    if (!ok || imported == null || !context.mounted) return;
+    final res = imported!;
+    await showBackupRestartRequiredDialog(
+      context,
+      details: l10n.backupPageImportGenericDone(
+        res.conversations,
+        res.messages,
+      ),
     );
   }
 

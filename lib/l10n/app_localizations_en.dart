@@ -2345,6 +2345,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backupPageImportFromChatbox => 'Import from Chatbox';
 
   @override
+  String get backupPageImportGeneric => 'Import chat history (JSON)';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      'Kelivo, Operit, Risu, SillyTavern, DeepSeek and more';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return 'Imported $conversations conversations, $messages messages';
+  }
+
+  @override
   String get backupReminderSectionTitle => 'Backup Reminder';
 
   @override

@@ -2384,6 +2384,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get backupPageImportFromChatbox => 'Импорт из Chatbox';
 
   @override
+  String get backupPageImportGeneric => 'Импорт истории чатов (JSON)';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      'Kelivo, Operit, Risu, SillyTavern, DeepSeek и другие';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return 'Импортировано чатов: $conversations, сообщений: $messages';
+  }
+
+  @override
   String get backupReminderSectionTitle =>
       'Напоминание о резервном копировании';
 

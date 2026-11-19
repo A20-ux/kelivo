@@ -2299,6 +2299,18 @@ class AppLocalizationsKo extends AppLocalizations {
   String get backupPageImportFromChatbox => 'Chatbox에서 가져오기';
 
   @override
+  String get backupPageImportGeneric => '채팅 기록 가져오기 (JSON)';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      'Kelivo, Operit, Risu, SillyTavern, DeepSeek 등 지원';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return '대화 $conversations개, 메시지 $messages개를 가져왔습니다';
+  }
+
+  @override
   String get backupReminderSectionTitle => '백업 알림';
 
   @override

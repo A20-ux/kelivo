@@ -2250,6 +2250,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backupPageImportFromChatbox => '从 Chatbox 导入';
 
   @override
+  String get backupPageImportGeneric => '导入聊天记录（JSON）';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      '支持 Kelivo、Operit、Risu、SillyTavern、DeepSeek 等';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return '已导入 $conversations 个会话，$messages 条消息';
+  }
+
+  @override
   String get backupReminderSectionTitle => '备份提醒';
 
   @override
@@ -18830,6 +18842,18 @@ class AppLocalizationsZhHans extends AppLocalizationsZh {
 
   @override
   String get backupPageImportFromChatbox => '从 Chatbox 导入';
+
+  @override
+  String get backupPageImportGeneric => '导入聊天记录（JSON）';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      '支持 Kelivo、Operit、Risu、SillyTavern、DeepSeek 等';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return '已导入 $conversations 个会话，$messages 条消息';
+  }
 
   @override
   String get backupReminderSectionTitle => '备份提醒';
@@ -35418,6 +35442,18 @@ class AppLocalizationsZhHant extends AppLocalizationsZh {
 
   @override
   String get backupPageImportFromChatbox => '從 Chatbox 匯入';
+
+  @override
+  String get backupPageImportGeneric => '匯入聊天記錄（JSON）';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      '支援 Kelivo、Operit、Risu、SillyTavern、DeepSeek 等';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return '已匯入 $conversations 個對話，$messages 則訊息';
+  }
 
   @override
   String get backupReminderSectionTitle => '備份提醒';

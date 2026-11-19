@@ -1101,6 +1101,9 @@
     }
   },
   "backupPageImportFromChatbox": "Import from Chatbox",
+  "backupPageImportGeneric": "Import chat history (JSON)",
+  "backupPageImportGenericSubtitle": "Kelivo, Operit, Risu, SillyTavern, DeepSeek and more",
+  "backupPageImportGenericDone": "Imported {conversations} conversations, {messages} messages",
   "backupReminderSectionTitle": "Backup Reminder",
   "backupReminderEnableTitle": "Remind me to back up",
   "backupReminderFrequencyTitle": "Frequency",
@@ -10547,6 +10550,23 @@
   },
   "@backupPageImportFromChatbox": {
     "description": "Button label and task title for importing data from a Chatbox backup."
+  },
+  "@backupPageImportGeneric": {
+    "description": "Button label and task title for importing chat history from a generic JSON export."
+  },
+  "@backupPageImportGenericSubtitle": {
+    "description": "Subtitle listing the chat apps whose JSON exports can be imported."
+  },
+  "@backupPageImportGenericDone": {
+    "placeholders": {
+      "conversations": {
+        "type": "int"
+      },
+      "messages": {
+        "type": "int"
+      }
+    },
+    "description": "Result summary after a generic chat-history import; conversations and messages are imported counts."
   },
   "@backupReminderSectionTitle": {
     "description": "Section header for the backup reminder settings."

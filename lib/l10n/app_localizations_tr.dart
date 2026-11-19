@@ -2359,6 +2359,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String get backupPageImportFromChatbox => 'Chatbox\'tan İçe Aktar';
 
   @override
+  String get backupPageImportGeneric => 'Sohbet geçmişini içe aktar (JSON)';
+
+  @override
+  String get backupPageImportGenericSubtitle =>
+      'Kelivo, Operit, Risu, SillyTavern, DeepSeek ve daha fazlası';
+
+  @override
+  String backupPageImportGenericDone(int conversations, int messages) {
+    return '$conversations sohbet, $messages mesaj içe aktarıldı';
+  }
+
+  @override
   String get backupReminderSectionTitle => 'Yedek Hatırlatıcısı';
 
   @override
