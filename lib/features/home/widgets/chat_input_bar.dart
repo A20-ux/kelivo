@@ -51,6 +51,7 @@ import '../../../core/services/search/search_service.dart';
 import '../../../core/services/api/builtin_tools.dart';
 import '../../../core/services/api/chat_api_service.dart';
 import '../../../core/services/api/native_input_attachments.dart';
+import '../../../core/services/voice_recorder_service.dart';
 import '../../../core/services/asr/asr_service_options.dart';
 import '../../../core/utils/multimodal_input_utils.dart';
 import '../../../utils/brand_assets.dart';
@@ -924,6 +925,12 @@ class _ChatInputBarState extends State<ChatInputBar>
   // late can tell its recording is gone and must not touch the draft.
   int _voiceSessionSerial = 0;
   String? _lastReportedVoiceError;
+  // WeChat-style hold-to-record, independent from the ASR transcript voice.
+  VoiceRecorderService? _wxRecorder;
+  bool _wxRecording = false;
+  bool _wxCancel = false;
+  Timer? _wxTimer;
+  Duration _wxElapsed = Duration.zero;
   final List<_DraftImage> _images = <_DraftImage>[];
   final Queue<_ImageProcessingTask> _imageProcessingQueue =
       Queue<_ImageProcessingTask>();
@@ -1673,6 +1680,8 @@ class _ChatInputBarState extends State<ChatInputBar>
     final asr = widget.asrProvider;
     asr?.removeListener(_handleAsrChanged);
     if (_ownsVoiceSession && asr != null) unawaited(asr.cancel());
+    _wxTimer?.cancel();
+    unawaited(_wxRecorder?.dispose());
     for (final timer in _repeatTimers.values) {
       try {
         timer?.cancel();
@@ -2024,6 +2033,7 @@ class _ChatInputBarState extends State<ChatInputBar>
   /// restore, clear). The replacement owns the draft now, so nothing from the
   /// recording — text, audio, or a send — may reach it.
   void _abandonVoiceSession() {
+    unawaited(_wxAbortRecording());
     if (!_ownsVoiceSession) return;
     _voiceSessionSerial++;
     _stopVoiceLevelSampling();
@@ -2191,6 +2201,124 @@ class _ChatInputBarState extends State<ChatInputBar>
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // WeChat-style hold-to-record (independent from the ASR transcript voice)
+  // ---------------------------------------------------------------------------
+
+  Future<String> _wxRecordingPath() async {
+    final dir =
+        await (widget.mediaController?.capture().uploadDirectory() ??
+            AppDirectories.getUploadDirectory());
+    await dir.create(recursive: true);
+    final now = DateTime.now();
+    String two(int value) => value.toString().padLeft(2, '0');
+    final base =
+        'voice_${now.year}${two(now.month)}${two(now.day)}_'
+        '${two(now.hour)}${two(now.minute)}${two(now.second)}';
+    var counter = 0;
+    while (true) {
+      final suffix = counter == 0 ? '' : '($counter)';
+      final file = File(p.join(dir.path, '$base$suffix.m4a'));
+      try {
+        await file.create(exclusive: true);
+        return file.path;
+      } on FileSystemException {
+        if (!await file.exists()) rethrow;
+        counter++;
+      }
+    }
+  }
+
+  Future<void> _wxStartRecording() async {
+    if (_composerLocked || widget.loading || _wxRecording) return;
+    final recorder = _wxRecorder ??= VoiceRecorderService();
+    final granted = await recorder.hasPermission();
+    if (!granted) {
+      if (mounted) {
+        showAppSnackBar(
+          context,
+          message: AppLocalizations.of(
+            context,
+          )!.asrServicesMicrophonePermissionDenied,
+          type: NotificationType.warning,
+        );
+      }
+      return;
+    }
+    String path;
+    try {
+      path = await _wxRecordingPath();
+      await recorder.start(path: path);
+    } catch (error) {
+      if (mounted) _reportVoiceFailure(error);
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _wxRecording = true;
+      _wxCancel = false;
+      _wxElapsed = Duration.zero;
+    });
+    HapticFeedback.mediumImpact();
+    _wxTimer?.cancel();
+    _wxTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
+      if (!mounted || !_wxRecording) return;
+      setState(
+        () => _wxElapsed = Duration(
+          milliseconds: _wxElapsed.inMilliseconds + 200,
+        ),
+      );
+    });
+    widget.focusNode?.unfocus();
+  }
+
+  void _wxMoveRecording(Offset offset) {
+    if (!_wxRecording) return;
+    final cancel = offset.dy < -64;
+    if (cancel != _wxCancel) setState(() => _wxCancel = cancel);
+  }
+
+  Future<void> _wxEndRecording() async {
+    final recorder = _wxRecorder;
+    if (!_wxRecording || recorder == null) return;
+    _wxTimer?.cancel();
+    final cancel = _wxCancel;
+    setState(() {
+      _wxRecording = false;
+      _wxCancel = false;
+    });
+    if (cancel) {
+      await recorder.cancel();
+      return;
+    }
+    final result = await recorder.stop();
+    if (!mounted) return;
+    if (result == null) {
+      _reportNoSpeech();
+      return;
+    }
+    _docs.add(
+      DocumentAttachment(
+        path: result.path,
+        fileName: result.fileName,
+        mime: result.mime,
+      ),
+    );
+    setState(_syncDocumentChecks);
+    await _handleSend();
+  }
+
+  Future<void> _wxAbortRecording() async {
+    _wxTimer?.cancel();
+    final recorder = _wxRecorder;
+    if (_wxRecording && recorder != null) {
+      await recorder.cancel();
+    }
+    _wxRecording = false;
+    _wxCancel = false;
+    _wxElapsed = Duration.zero;
+  }
+
   void _reportNoSpeech() {
     if (!mounted) return;
     showAppSnackBar(
@@ -2228,6 +2356,52 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   /// Bottom row shown while recording: cancel (X) — waveform — stop — send.
+  Widget _buildWxRecordingRow(BuildContext context, ThemeData theme) {
+    final seconds = _wxElapsed.inSeconds;
+    final time =
+        '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+    final fg = theme.colorScheme.onSurface;
+    final hintColor = _wxCancel
+        ? theme.colorScheme.error
+        : fg.withValues(alpha: 0.62);
+    return Row(
+      key: const ValueKey('wx-voice'),
+      children: [
+        _CompactIconButton(
+          tooltip: '取消',
+          icon: Lucide.X,
+          onTap: () => unawaited(_wxAbortRecording()),
+        ),
+        Expanded(
+          child: SizedBox(
+            height: 32,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Lucide.Mic, size: 16, color: fg.withValues(alpha: 0.7)),
+                const SizedBox(width: 8),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                    color: fg.withValues(alpha: 0.85),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  _wxCancel ? '松开取消' : '松开发送 · 上滑取消',
+                  style: TextStyle(fontSize: 13, color: hintColor),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 44),
+      ],
+    );
+  }
+
   Widget _buildVoiceRecordingRow(BuildContext context, ThemeData theme) {
     final l10n = AppLocalizations.of(context)!;
     final canFinish =
@@ -5084,7 +5258,9 @@ class _ChatInputBarState extends State<ChatInputBar>
                                             child: child,
                                           ),
                                         ),
-                                    child: _ownsVoiceSession
+                                    child: _wxRecording
+                                        ? _buildWxRecordingRow(context, theme)
+                                        : _ownsVoiceSession
                                         ? _buildVoiceRecordingRow(
                                             context,
                                             theme,
@@ -5180,6 +5356,22 @@ class _ChatInputBarState extends State<ChatInputBar>
                                                     ),
                                                     const SizedBox(width: 8),
                                                   ],
+                                                  if (!_composerLocked &&
+                                                      !widget.loading)
+                                                    _HoldToTalkButton(
+                                                      recording: _wxRecording,
+                                                      cancel: _wxCancel,
+                                                      onStart: () => unawaited(
+                                                        _wxStartRecording(),
+                                                      ),
+                                                      onMove: _wxMoveRecording,
+                                                      onEnd: () => unawaited(
+                                                        _wxEndRecording(),
+                                                      ),
+                                                      onCancel: () => unawaited(
+                                                        _wxAbortRecording(),
+                                                      ),
+                                                    ),
                                                   _CompactSendButton(
                                                     enabled:
                                                         hasInput &&
@@ -5888,4 +6080,51 @@ class _DraftImageTapTargetState extends State<_DraftImageTapTarget> {
       ),
     ),
   );
+}
+
+/// WeChat-style hold-to-talk button. The long-press gesture is owned by this
+/// button and never forwarded to the text field, so holding it cannot trigger
+/// text selection.
+class _HoldToTalkButton extends StatelessWidget {
+  const _HoldToTalkButton({
+    required this.recording,
+    required this.cancel,
+    required this.onStart,
+    required this.onMove,
+    required this.onEnd,
+    required this.onCancel,
+  });
+
+  final bool recording;
+  final bool cancel;
+  final VoidCallback onStart;
+  final ValueChanged<Offset> onMove;
+  final VoidCallback onEnd;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fg = cancel
+        ? theme.colorScheme.error
+        : theme.colorScheme.onSurface.withValues(alpha: 0.54);
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onLongPressStart: (_) => onStart(),
+      onLongPressMoveUpdate: (details) => onMove(details.offsetFromOrigin),
+      onLongPressEnd: (_) => onEnd(),
+      onLongPressCancel: onCancel,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 120),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: cancel
+              ? theme.colorScheme.error.withValues(alpha: 0.14)
+              : theme.colorScheme.onSurface.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(Lucide.Mic, size: 20, color: fg),
+      ),
+    );
+  }
 }
