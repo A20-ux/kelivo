@@ -100,7 +100,11 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
 
     final theme = Theme.of(context);
     final active = session.phase == CallPhase.active;
-    final elapsed = DateTime.now().difference(session.startedAt);
+    // 计时从接通时刻算起，响铃等待时间不计入通话时长。
+    final answeredAt = session.answeredAt;
+    final elapsed = answeredAt == null
+        ? Duration.zero
+        : DateTime.now().difference(answeredAt);
     final name = session.assistantName.trim();
     final initial = name.isEmpty ? '?' : name[0];
     final avatarSource = session.avatar ?? '';

@@ -840,6 +840,32 @@ class HomePageController extends ChangeNotifier {
     };
     IdleProactiveService.instance.onTrigger = _handleIdleProactive;
     IncomingCallService.instance.onAnswered = _handleCallAnswered;
+    IncomingCallService.instance.onHangUp = _handleCallHangUp;
+  }
+
+  /// 挂断留痕：接通后挂断的通话，在会话里记一条通话时长；未接通（拒接/
+  /// 无人接）不写记录。
+  Future<void> _handleCallHangUp(
+    CallSession session,
+    Duration? duration,
+  ) async {
+    try {
+      if (duration == null || duration.inSeconds <= 0) return;
+      final formatted = _formatCallDuration(duration);
+      await _chatService.addMessage(
+        conversationId: session.conversationId,
+        role: 'assistant',
+        content: '📞 通话 $formatted',
+      );
+    } catch (_) {
+      // 留痕失败不影响挂断流程。
+    }
+  }
+
+  String _formatCallDuration(Duration d) {
+    final minutes = d.inMinutes.toString().padLeft(2, '0');
+    final seconds = (d.inSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   /// 空闲超时触发的执行落点：message 走现有定时发言链路并弹通知；

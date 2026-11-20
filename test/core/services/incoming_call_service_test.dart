@@ -74,5 +74,35 @@ void main() {
       service.setOpeningLine('  Hey, you there.  ');
       expect(service.session.value!.openingLine, 'Hey, you there.');
     });
+
+    test('answer records answeredAt; hangUp reports duration only if answered',
+        () {
+      final service = IncomingCallService.instance;
+      service.hangUp();
+      Duration? captured;
+      service.onHangUp = (session, duration) => captured = duration;
+
+      // 未接通直接挂断：时长为 null。
+      service.start(
+        conversationId: 'conv-4',
+        assistantId: 'asst-4',
+        assistantName: 'Mira',
+      );
+      service.hangUp();
+      expect(captured, isNull);
+
+      // 接通后挂断：记录接通时刻并给出非 null 时长。
+      service.start(
+        conversationId: 'conv-5',
+        assistantId: 'asst-5',
+        assistantName: 'Mira',
+      );
+      service.answer();
+      expect(service.session.value!.answeredAt, isNotNull);
+      service.hangUp();
+      expect(captured, isNotNull);
+      expect(service.lastCallDuration, isNotNull);
+      service.onHangUp = null;
+    });
   });
 }
