@@ -41,6 +41,8 @@ import '../../../core/providers/quick_phrase_provider.dart';
 import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
+import '../../../core/services/idle_proactive_service.dart';
+import '../../../core/models/idle_proactive_settings.dart';
 import '../../../core/utils/scheduler_idle.dart';
 import '../../../core/services/tts/tts_text_selection.dart';
 import '../../../core/services/haptics.dart';
@@ -817,6 +819,21 @@ class HomePageController extends ChangeNotifier {
       onStreamTick: _handleStreamTick,
       onMessagePresented: (id) => onFindTextChanged?.call(id),
     );
+    IdleProactiveService.instance.pickTarget = () {
+      Conversation? oldest;
+      for (final conversation in _chatService.getAllConversations()) {
+        if (_chatService.isTemporaryConversation(conversation.id)) continue;
+        if (oldest == null ||
+            conversation.updatedAt.isBefore(oldest.updatedAt)) {
+          oldest = conversation;
+        }
+      }
+      if (oldest == null) return null;
+      return IdleProactiveTarget(
+        conversationId: oldest.id,
+        lastActiveAt: oldest.updatedAt,
+      );
+    };
   }
 
   /// Minimum gap between generation haptics. Stream ticks arrive every 50ms;

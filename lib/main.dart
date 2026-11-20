@@ -1,6 +1,7 @@
 import 'features/side_panel/desktop_side_panel_controller.dart';
 import 'core/services/scheduled_tasks_service.dart';
 import 'core/services/app_lock_controller.dart';
+import 'core/services/idle_proactive_service.dart';
 import 'features/home/widgets/app_lock_gate.dart';
 import 'core/services/auth/provider_oauth_service.dart';
 import 'package:Kelivo/core/services/sandbox/workspace_channel.dart';
@@ -382,6 +383,7 @@ Future<void> main(List<String> arguments) async {
         // logging.Logger.root.onRecord.listen((rec) { ... });
         // Cache current Documents directory to fix sandboxed absolute paths on iOS
         await SandboxPathResolver.init();
+        unawaited(IdleProactiveService.instance.init());
         ChatDatabaseLease? processDatabaseLease;
         BusinessPreferences? businessPreferences;
         var recoveryAttempted = false;
