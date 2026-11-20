@@ -1,4 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
+
+import 'call_ringer.dart';
 
 /// 模拟来电的阶段：响铃中 → 通话中 → 已结束。
 enum CallPhase { ringing, active, ended }
@@ -63,17 +67,20 @@ final class IncomingCallService {
       startedAt: DateTime.now(),
       phase: CallPhase.ringing,
     );
+    unawaited(CallRinger.instance.start());
   }
 
-  /// 接听：进入通话中。
+  /// 接听：进入通话中，停止响铃。
   void answer() {
     final current = session.value;
     if (current == null || current.phase != CallPhase.ringing) return;
+    unawaited(CallRinger.instance.stop());
     session.value = current.copyWith(phase: CallPhase.active);
   }
 
-  /// 挂断：结束并清空会话。
+  /// 挂断：停止响铃并清空会话。
   void hangUp() {
+    unawaited(CallRinger.instance.stop());
     session.value = null;
   }
 }

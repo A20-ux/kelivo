@@ -2,6 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:Kelivo/core/services/incoming_call_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('IncomingCallService state machine', () {
     test('start creates a ringing session', () {
       final service = IncomingCallService.instance;
