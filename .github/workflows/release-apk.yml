@@ -102,7 +102,7 @@ jobs:
               app-release.apk) abi="arm64-v8a" ;;
               *) abi=$(echo "$file" | sed -E 's/app-(.*)-release\.apk/\1/') ;;
             esac
-            mv "$file" "Kelivo_${VERSION}_${abi}.apk"
+            mv "$file" "Kelivo_${VERSION}_alt_${abi}.apk"
           done
           ls -lh
 
