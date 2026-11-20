@@ -468,6 +468,11 @@ class TtsProvider extends ChangeNotifier {
   /// With [waitForCompletion] false, returns after old-player cleanup and the
   /// native buffering lease are complete. Generation may then end safely;
   /// neither a network response nor the spoken audio blocks that handoff.
+  /// 当前选中并启用的网络语音服务配置；未配置网络 TTS 时返回 `null`。
+  /// 供语音消息落盘、模拟来电等链路复用同一套语音 API 配置。
+  Future<TtsServiceOptions?> get selectedNetworkService =>
+      _getSelectedNetworkService();
+
   Future<void> speak(
     String text, {
     bool flush = true,
