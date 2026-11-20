@@ -503,7 +503,9 @@ class _AboutPageState extends State<AboutPage> {
                 icon: Lucide.Code,
                 label: l10n.aboutPageVersion,
                 detailBuilder: (_) => Text(
-                  _version.isEmpty ? '...' : '$_version / $_buildNumber',
+                  _version.isEmpty
+                      ? '...'
+                      : '$_version / $_buildNumber · Alt',
                 ),
                 onTap: _onVersionTap,
               ),
