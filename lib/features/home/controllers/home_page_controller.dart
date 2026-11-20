@@ -32,6 +32,7 @@ import '../../../core/models/reasoning_request.dart';
 import '../../../core/models/workspace_binding.dart';
 import '../../../core/providers/workspace_provider.dart';
 import '../../../core/models/quick_phrase.dart';
+import '../../../core/models/assistant.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
@@ -42,6 +43,7 @@ import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/idle_proactive_service.dart';
+import '../../../core/services/tts/voice_message_builder.dart';
 import '../../../core/services/incoming_call_service.dart';
 import '../../call/pages/incoming_call_page.dart';
 import '../../../core/models/idle_proactive_settings.dart';
@@ -928,9 +930,37 @@ class HomePageController extends ChangeNotifier {
       final line = result.assistantMessage?.content.trim();
       if (result.success && line != null && line.isNotEmpty) {
         IncomingCallService.instance.setOpeningLine(line);
+        await _saveAssistantVoiceClip(conversation, assistant, line);
       }
     } catch (_) {
       // Stale context or transient failure: stay silent in the call.
+    }
+  }
+
+  /// 把一段 AI 文本经语音 API 合成，存成 assistant 语音消息气泡入库；
+  /// 未配语音服务或合成失败时静默跳过，不影响已有文字消息。
+  Future<void> _saveAssistantVoiceClip(
+    Conversation conversation,
+    Assistant assistant,
+    String text,
+  ) async {
+    try {
+      final tts = _context.read<TtsProvider>();
+      final options = await tts.selectedNetworkService;
+      final part = await VoiceMessageBuilder.buildAudioPart(
+        options: options,
+        text: text,
+      );
+      if (part == null) return;
+      await _chatService.addMessage(
+        conversationId: conversation.id,
+        role: 'assistant',
+        parts: [part],
+        modelId: assistant.chatModelId,
+        providerId: assistant.chatModelProvider,
+      );
+    } catch (_) {
+      // No voice service or transient failure: keep the text-only message.
     }
   }
 
