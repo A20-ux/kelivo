@@ -931,6 +931,7 @@ class _ChatInputBarState extends State<ChatInputBar>
   bool _wxCancel = false;
   Timer? _wxTimer;
   Duration _wxElapsed = Duration.zero;
+  double? _wxPointerDownY;
   final List<_DraftImage> _images = <_DraftImage>[];
   final Queue<_ImageProcessingTask> _imageProcessingQueue =
       Queue<_ImageProcessingTask>();
@@ -2229,6 +2230,15 @@ class _ChatInputBarState extends State<ChatInputBar>
     }
   }
 
+  /// 集中复位录音 UI，取消 / 发送 / 报错 / 离开页面都走这里兜底。
+  void _resetWxUi() {
+    _wxRecording = false;
+    _wxCancel = false;
+    _wxElapsed = Duration.zero;
+    _wxPointerDownY = null;
+    if (mounted) setState(() {});
+  }
+
   Future<void> _wxStartRecording() async {
     if (_composerLocked || widget.loading || _wxRecording) return;
     final recorder = _wxRecorder ??= VoiceRecorderService();
@@ -2251,6 +2261,7 @@ class _ChatInputBarState extends State<ChatInputBar>
       await recorder.start(path: path);
     } catch (error) {
       if (mounted) _reportVoiceFailure(error);
+      _resetWxUi();
       return;
     }
     if (!mounted) return;
@@ -2272,36 +2283,53 @@ class _ChatInputBarState extends State<ChatInputBar>
     widget.focusNode?.unfocus();
   }
 
-  void _wxMoveRecording(Offset offset) {
-    if (!_wxRecording) return;
-    final cancel = offset.dy < -64;
+  /// 指针按下：记录基准 Y 后开始录音。走原始指针事件，不参与手势竞技场，
+  /// 避免与外层滚动手势互斥导致上滑 / 松手事件被吞掉。
+  void _wxPointerDown(PointerDownEvent event) {
+    if (_wxRecording) return;
+    _wxPointerDownY = event.localPosition.dy;
+    unawaited(_wxStartRecording());
+  }
+
+  void _wxPointerMove(PointerMoveEvent event) {
+    if (!_wxRecording || _wxPointerDownY == null) return;
+    final upward = _wxPointerDownY! - event.localPosition.dy;
+    final cancel = upward > 64;
     if (cancel != _wxCancel) setState(() => _wxCancel = cancel);
   }
 
   Future<void> _wxEndRecording() async {
     final recorder = _wxRecorder;
-    if (!_wxRecording || recorder == null) return;
-    _wxTimer?.cancel();
-    final cancel = _wxCancel;
-    setState(() {
-      _wxRecording = false;
-      _wxCancel = false;
-    });
-    if (cancel) {
-      await recorder.cancel();
+    if (!_wxRecording || recorder == null) {
+      _resetWxUi();
       return;
     }
-    final result = await recorder.stop();
+    _wxTimer?.cancel();
+    final cancel = _wxCancel;
+    // 先把录音 UI 复位，不等原生插件写完文件，避免松手 / 点叉后界面卡住。
+    _resetWxUi();
+    if (cancel) {
+      unawaited(recorder.cancel());
+      return;
+    }
+    final WxStopResult result;
+    try {
+      result = await recorder.stop();
+    } catch (error) {
+      if (mounted) _reportVoiceFailure(error);
+      return;
+    }
     if (!mounted) return;
-    if (result == null) {
-      _reportNoSpeech();
+    final rec = result.recording;
+    if (rec == null) {
+      _reportWxStopReason(result.reason);
       return;
     }
     _docs.add(
       DocumentAttachment(
-        path: result.path,
-        fileName: result.fileName,
-        mime: result.mime,
+        path: rec.path,
+        fileName: rec.fileName,
+        mime: rec.mime,
       ),
     );
     setState(_syncDocumentChecks);
@@ -2311,12 +2339,36 @@ class _ChatInputBarState extends State<ChatInputBar>
   Future<void> _wxAbortRecording() async {
     _wxTimer?.cancel();
     final recorder = _wxRecorder;
-    if (_wxRecording && recorder != null) {
-      await recorder.cancel();
+    final wasRecording = _wxRecording;
+    _resetWxUi();
+    // 后台清理临时文件，不阻塞 UI，避免点叉后按钮卡住。
+    if (wasRecording && recorder != null) {
+      unawaited(recorder.cancel());
     }
-    _wxRecording = false;
-    _wxCancel = false;
-    _wxElapsed = Duration.zero;
+  }
+
+  void _reportWxStopReason(String? reason) {
+    if (!mounted) return;
+    switch (reason) {
+      case 'tooShort':
+        showAppSnackBar(
+          context,
+          message: '录音太短',
+          type: NotificationType.warning,
+        );
+      case 'empty':
+        showAppSnackBar(
+          context,
+          message: '录音文件为空，请重试',
+          type: NotificationType.error,
+        );
+      default:
+        showAppSnackBar(
+          context,
+          message: '录音失败，请重试',
+          type: NotificationType.error,
+        );
+    }
   }
 
   void _reportNoSpeech() {
@@ -5361,16 +5413,18 @@ class _ChatInputBarState extends State<ChatInputBar>
                                                     _HoldToTalkButton(
                                                       recording: _wxRecording,
                                                       cancel: _wxCancel,
-                                                      onStart: () => unawaited(
-                                                        _wxStartRecording(),
-                                                      ),
-                                                      onMove: _wxMoveRecording,
-                                                      onEnd: () => unawaited(
-                                                        _wxEndRecording(),
-                                                      ),
-                                                      onCancel: () => unawaited(
-                                                        _wxAbortRecording(),
-                                                      ),
+                                                      onPointerDown:
+                                                          _wxPointerDown,
+                                                      onPointerMove:
+                                                          _wxPointerMove,
+                                                      onPointerUp: (_) =>
+                                                          unawaited(
+                                                            _wxEndRecording(),
+                                                          ),
+                                                      onPointerCancel: (_) =>
+                                                          unawaited(
+                                                            _wxAbortRecording(),
+                                                          ),
                                                     ),
                                                   _CompactSendButton(
                                                     enabled:
@@ -6089,18 +6143,18 @@ class _HoldToTalkButton extends StatelessWidget {
   const _HoldToTalkButton({
     required this.recording,
     required this.cancel,
-    required this.onStart,
-    required this.onMove,
-    required this.onEnd,
-    required this.onCancel,
+    required this.onPointerDown,
+    required this.onPointerMove,
+    required this.onPointerUp,
+    required this.onPointerCancel,
   });
 
   final bool recording;
   final bool cancel;
-  final VoidCallback onStart;
-  final ValueChanged<Offset> onMove;
-  final VoidCallback onEnd;
-  final VoidCallback onCancel;
+  final PointerDownEventListener onPointerDown;
+  final PointerMoveEventListener onPointerMove;
+  final PointerUpEventListener onPointerUp;
+  final PointerCancelEventListener onPointerCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -6108,12 +6162,12 @@ class _HoldToTalkButton extends StatelessWidget {
     final fg = cancel
         ? theme.colorScheme.error
         : theme.colorScheme.onSurface.withValues(alpha: 0.54);
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.opaque,
-      onLongPressStart: (_) => onStart(),
-      onLongPressMoveUpdate: (details) => onMove(details.offsetFromOrigin),
-      onLongPressEnd: (_) => onEnd(),
-      onLongPressCancel: onCancel,
+      onPointerDown: onPointerDown,
+      onPointerMove: onPointerMove,
+      onPointerUp: onPointerUp,
+      onPointerCancel: onPointerCancel,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.all(10),
