@@ -11640,6 +11640,41 @@ class AppLocalizationsZh extends AppLocalizations {
   String get backgroundPrivacyDetail => '在通知和实时状态中隐藏会话标题及工具详情，仅显示通用状态、任务数量和耗时。';
 
   @override
+  String get idleProactiveEnabled => 'Idle proactive contact';
+
+  @override
+  String get idleProactiveEnabledDetail =>
+      'After you have not replied for a while, the character may reach out on its own. Any interaction resets the timer.';
+
+  @override
+  String get idleProactiveMessageChannel => 'Auto messages';
+
+  @override
+  String get idleProactiveMessageChannelDetail =>
+      'Send a proactive message when idle.';
+
+  @override
+  String get idleProactiveCallChannel => 'Proactive calls';
+
+  @override
+  String get idleProactiveCallChannelDetail =>
+      'Raise a mock incoming call when idle.';
+
+  @override
+  String get idleProactiveIdleMinutes => 'Idle wait time';
+
+  @override
+  String get idleProactiveIdleMinutesDetail =>
+      'Minutes without interaction before a proactive trigger.';
+
+  @override
+  String get idleProactiveCallProbability => 'Call probability';
+
+  @override
+  String get idleProactiveCallProbabilityDetail =>
+      'Chance a proactive trigger becomes a call; the rest become messages.';
+
+  @override
   String get backgroundLiveActivities => '实时活动';
 
   @override

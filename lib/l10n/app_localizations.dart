@@ -21699,6 +21699,66 @@ abstract class AppLocalizations {
   /// **'Hide conversation titles and tool details in notifications and live status. Only generic status, task count and elapsed time are shown.'**
   String get backgroundPrivacyDetail;
 
+  /// No description provided for @idleProactiveEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle proactive contact'**
+  String get idleProactiveEnabled;
+
+  /// No description provided for @idleProactiveEnabledDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'After you have not replied for a while, the character may reach out on its own. Any interaction resets the timer.'**
+  String get idleProactiveEnabledDetail;
+
+  /// No description provided for @idleProactiveMessageChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto messages'**
+  String get idleProactiveMessageChannel;
+
+  /// No description provided for @idleProactiveMessageChannelDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Send a proactive message when idle.'**
+  String get idleProactiveMessageChannelDetail;
+
+  /// No description provided for @idleProactiveCallChannel.
+  ///
+  /// In en, this message translates to:
+  /// **'Proactive calls'**
+  String get idleProactiveCallChannel;
+
+  /// No description provided for @idleProactiveCallChannelDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Raise a mock incoming call when idle.'**
+  String get idleProactiveCallChannelDetail;
+
+  /// No description provided for @idleProactiveIdleMinutes.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle wait time'**
+  String get idleProactiveIdleMinutes;
+
+  /// No description provided for @idleProactiveIdleMinutesDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Minutes without interaction before a proactive trigger.'**
+  String get idleProactiveIdleMinutesDetail;
+
+  /// No description provided for @idleProactiveCallProbability.
+  ///
+  /// In en, this message translates to:
+  /// **'Call probability'**
+  String get idleProactiveCallProbability;
+
+  /// No description provided for @idleProactiveCallProbabilityDetail.
+  ///
+  /// In en, this message translates to:
+  /// **'Chance a proactive trigger becomes a call; the rest become messages.'**
+  String get idleProactiveCallProbabilityDetail;
+
   /// Toggle/action label for iOS Live Activities showing tasks on Lock Screen and Dynamic Island.
   ///
   /// In en, this message translates to:

@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/models/idle_proactive_settings.dart';
 import '../../../core/models/mobile_background_settings.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/idle_proactive_service.dart';
 import '../../../core/services/mobile_background.dart';
 import '../../../icons/lucide_adapter.dart';
 import '../../../l10n/app_localizations.dart';
@@ -37,12 +39,14 @@ class _MobileBackgroundSettingsPageState
     with WidgetsBindingObserver {
   late final coordinator =
       widget.coordinator ?? MobileBackgroundCoordinator.instance;
+  IdleProactiveSettings _idle = const IdleProactiveSettings();
   bool get _android =>
       (widget.platform ?? defaultTargetPlatform) == TargetPlatform.android;
 
   @override
   void initState() {
     super.initState();
+    _idle = IdleProactiveService.instance.settings;
     WidgetsBinding.instance.addObserver(this);
     coordinator.addListener(_statusChanged);
     unawaited(
@@ -80,6 +84,11 @@ class _MobileBackgroundSettingsPageState
     await coordinator.configure(settings.mobileBackground, l10n);
     if (permission != null) await coordinator.requestPermission(permission);
     await coordinator.refreshStatus();
+  }
+
+  Future<void> _saveIdle(IdleProactiveSettings value) async {
+    setState(() => _idle = value);
+    await IdleProactiveService.instance.updateSettings(value);
   }
 
   Future<void> _permission(String permission) async {
@@ -179,6 +188,59 @@ class _MobileBackgroundSettingsPageState
                 value.privacyMode,
                 (on) => _save(value.copyWith(privacyMode: on)),
               ),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          SectionCard(
+            children: _withDividers([
+              _toggle(
+                'idle-enabled',
+                Lucide.Zap,
+                l.idleProactiveEnabled,
+                l.idleProactiveEnabledDetail,
+                _idle.enabled,
+                (on) => _saveIdle(_idle.copyWith(enabled: on)),
+              ),
+              if (_idle.enabled) ...[
+                _toggle(
+                  'idle-message',
+                  Lucide.MessageCircle,
+                  l.idleProactiveMessageChannel,
+                  l.idleProactiveMessageChannelDetail,
+                  _idle.allowMessage,
+                  (on) => _saveIdle(_idle.copyWith(allowMessage: on)),
+                ),
+                _toggle(
+                  'idle-call',
+                  Lucide.Phone,
+                  l.idleProactiveCallChannel,
+                  l.idleProactiveCallChannelDetail,
+                  _idle.allowCall,
+                  (on) => _saveIdle(_idle.copyWith(allowCall: on)),
+                ),
+                _sliderRow(
+                  Lucide.FileClock,
+                  l.idleProactiveIdleMinutes,
+                  l.idleProactiveIdleMinutesDetail,
+                  _idle.idleMinutes.toDouble(),
+                  5,
+                  120,
+                  23,
+                  '${_idle.idleMinutes} min',
+                  (v) => _saveIdle(_idle.copyWith(idleMinutes: v.round())),
+                ),
+                _sliderRow(
+                  Lucide.Phone,
+                  l.idleProactiveCallProbability,
+                  l.idleProactiveCallProbabilityDetail,
+                  _idle.callProbability.toDouble(),
+                  0,
+                  100,
+                  20,
+                  '${_idle.callProbability}%',
+                  (v) => _saveIdle(_idle.copyWith(callProbability: v.round())),
+                ),
+              ],
             ]),
           ),
           const SizedBox(height: 16),
@@ -450,6 +512,61 @@ class _MobileBackgroundSettingsPageState
     value: value,
     onChanged: (value) => unawaited(change(value)),
   );
+
+  Widget _sliderRow(
+    IconData icon,
+    String title,
+    String detail,
+    double value,
+    double min,
+    double max,
+    int divisions,
+    String label,
+    ValueChanged<double> onChanged,
+  ) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 20, color: cs.onSurfaceVariant),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: cs.onSurfaceVariant),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            detail,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
+          ),
+          Slider(
+            value: value,
+            min: min,
+            max: max,
+            divisions: divisions,
+            label: label,
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _action(
     IconData icon,
