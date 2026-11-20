@@ -1075,6 +1075,7 @@ class _HomePageState extends State<HomePage>
         await _controller.createNewConversationAnimated();
       },
       onOpenMiniMap: _openMiniMap,
+      onStartCall: () => _controller.startManualCall(),
       onCreateNewConversation: () async {
         await _controller.createNewConversationAnimated();
         if (mounted) {

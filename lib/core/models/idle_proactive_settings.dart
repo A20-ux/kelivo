@@ -10,6 +10,7 @@ final class IdleProactiveSettings {
     this.callProbability = 30,
     this.allowMessage = true,
     this.allowCall = true,
+    this.callCooldownMinutes = 5,
   });
 
   /// 总开关：是否启用空闲主动触发。
@@ -27,10 +28,16 @@ final class IdleProactiveSettings {
   /// 允许空闲时主动打模拟来电。
   final bool allowCall;
 
+  /// 两次主动来电之间的最小间隔（分钟），避免挂断后很快又弹来电。
+  final int callCooldownMinutes;
+
   /// 来电概率收敛到 0–100。
   int get normalizedCallProbability => callProbability.clamp(0, 100);
 
   Duration get idleDuration => Duration(minutes: idleMinutes.clamp(1, 1440));
+
+  Duration get callCooldownDuration =>
+      Duration(minutes: callCooldownMinutes.clamp(0, 1440));
 
   IdleProactiveSettings copyWith({
     bool? enabled,
@@ -38,6 +45,7 @@ final class IdleProactiveSettings {
     int? callProbability,
     bool? allowMessage,
     bool? allowCall,
+    int? callCooldownMinutes,
   }) {
     return IdleProactiveSettings(
       enabled: enabled ?? this.enabled,
@@ -45,6 +53,7 @@ final class IdleProactiveSettings {
       callProbability: callProbability ?? this.callProbability,
       allowMessage: allowMessage ?? this.allowMessage,
       allowCall: allowCall ?? this.allowCall,
+      callCooldownMinutes: callCooldownMinutes ?? this.callCooldownMinutes,
     );
   }
 
@@ -54,6 +63,7 @@ final class IdleProactiveSettings {
     'callProbability': normalizedCallProbability,
     'allowMessage': allowMessage,
     'allowCall': allowCall,
+    'callCooldownMinutes': callCooldownMinutes,
   };
 
   factory IdleProactiveSettings.fromJson(Map<String, dynamic> json) {
@@ -63,6 +73,8 @@ final class IdleProactiveSettings {
       callProbability: (json['callProbability'] as num?)?.toInt() ?? 30,
       allowMessage: json['allowMessage'] != false,
       allowCall: json['allowCall'] != false,
+      callCooldownMinutes:
+          (json['callCooldownMinutes'] as num?)?.toInt() ?? 5,
     );
   }
 }

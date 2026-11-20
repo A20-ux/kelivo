@@ -42,6 +42,7 @@ class HomeMobileScaffold extends StatelessWidget {
     required this.onNewConversation,
     required this.onOpenMiniMap,
     required this.onCreateNewConversation,
+    required this.onStartCall,
     required this.onToggleTemporaryConversation,
     required this.onSelectModel,
     required this.canToggleTemporaryConversation,
@@ -69,6 +70,7 @@ class HomeMobileScaffold extends StatelessWidget {
   final VoidCallback onNewConversation;
   final VoidCallback onOpenMiniMap;
   final Future<void> Function() onCreateNewConversation;
+  final Future<void> Function() onStartCall;
   final Future<void> Function() onToggleTemporaryConversation;
   final VoidCallback onSelectModel;
   final bool canToggleTemporaryConversation;
@@ -269,6 +271,12 @@ class HomeMobileScaffold extends StatelessWidget {
               ],
             ),
       actions: [
+        IosIconButton(
+          size: 20,
+          minSize: 44,
+          onTap: onStartCall,
+          icon: Lucide.Phone,
+        ),
         IosIconButton(
           size: 20,
           minSize: 44,

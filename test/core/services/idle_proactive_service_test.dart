@@ -24,14 +24,18 @@ void main() {
   IdleProactiveAction resolve(
     IdleProactiveSettings s,
     DateTime? lastActive,
-    int random,
-  ) {
+    int random, {
+    DateTime? lastCallAt,
+    Duration? cooldown,
+  }) {
     return IdleProactiveService.resolveAction(
       settings: s,
       now: now,
       lastActiveAt: lastActive,
       idleDuration: idle,
       random0to99: random,
+      lastCallAt: lastCallAt,
+      callCooldownDuration: cooldown,
     );
   }
 
@@ -92,6 +96,48 @@ void main() {
 
     test('never interacted (null lastActive) does not trigger', () {
       expect(resolve(settings(), null, 0), IdleProactiveAction.none);
+    });
+
+    test('within call cooldown, call hit downgrades to message', () {
+      final last = now.subtract(const Duration(minutes: 40));
+      expect(
+        resolve(
+          settings(callProbability: 30),
+          last,
+          10,
+          lastCallAt: now.subtract(const Duration(minutes: 2)),
+          cooldown: const Duration(minutes: 5),
+        ),
+        IdleProactiveAction.message,
+      );
+    });
+
+    test('within call cooldown, message disabled -> none', () {
+      final last = now.subtract(const Duration(minutes: 40));
+      expect(
+        resolve(
+          settings(allowMessage: false, callProbability: 30),
+          last,
+          10,
+          lastCallAt: now.subtract(const Duration(minutes: 2)),
+          cooldown: const Duration(minutes: 5),
+        ),
+        IdleProactiveAction.none,
+      );
+    });
+
+    test('cooldown elapsed, call hit still dials', () {
+      final last = now.subtract(const Duration(minutes: 40));
+      expect(
+        resolve(
+          settings(callProbability: 30),
+          last,
+          10,
+          lastCallAt: now.subtract(const Duration(minutes: 10)),
+          cooldown: const Duration(minutes: 5),
+        ),
+        IdleProactiveAction.call,
+      );
     });
   });
 }

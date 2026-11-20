@@ -237,6 +237,7 @@ void main() {
                   onNewConversation: () {},
                   onOpenMiniMap: () {},
                   onCreateNewConversation: () async {},
+                  onStartCall: () async {},
                   onToggleTemporaryConversation: () async {},
                   onSelectModel: () {},
                   canToggleTemporaryConversation: false,

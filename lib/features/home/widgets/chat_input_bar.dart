@@ -15,6 +15,7 @@ import 'package:Kelivo/features/chat/widgets/tool_permission_widgets.dart';
 import '../services/composer_clipboard.dart';
 import 'package:Kelivo/shared/text_input/message_editing_controller.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, listEquals;
 import 'package:flutter/rendering.dart';
 import '../../../core/services/incoming_share_service.dart';
@@ -926,12 +927,13 @@ class _ChatInputBarState extends State<ChatInputBar>
   int _voiceSessionSerial = 0;
   String? _lastReportedVoiceError;
   // WeChat-style hold-to-record, independent from the ASR transcript voice.
+  static const Duration _wxMaxRecordingDuration = Duration(seconds: 60);
+  int _wxSerial = 0;
   VoiceRecorderService? _wxRecorder;
   bool _wxRecording = false;
   bool _wxCancel = false;
   Timer? _wxTimer;
   Duration _wxElapsed = Duration.zero;
-  double? _wxPointerDownY;
   final List<_DraftImage> _images = <_DraftImage>[];
   final Queue<_ImageProcessingTask> _imageProcessingQueue =
       Queue<_ImageProcessingTask>();
@@ -2235,13 +2237,14 @@ class _ChatInputBarState extends State<ChatInputBar>
     _wxRecording = false;
     _wxCancel = false;
     _wxElapsed = Duration.zero;
-    _wxPointerDownY = null;
     if (mounted) setState(() {});
   }
 
   Future<void> _wxStartRecording() async {
     if (_composerLocked || widget.loading || _wxRecording) return;
     final recorder = _wxRecorder ??= VoiceRecorderService();
+    // 代次编号：若权限 / 启动等待期间已松手或被中止，启动完成后作废这次录音。
+    final serial = ++_wxSerial;
     final granted = await recorder.hasPermission();
     if (!granted) {
       if (mounted) {
@@ -2264,7 +2267,10 @@ class _ChatInputBarState extends State<ChatInputBar>
       _resetWxUi();
       return;
     }
-    if (!mounted) return;
+    if (!mounted || serial != _wxSerial) {
+      unawaited(recorder.cancel());
+      return;
+    }
     setState(() {
       _wxRecording = true;
       _wxCancel = false;
@@ -2274,31 +2280,34 @@ class _ChatInputBarState extends State<ChatInputBar>
     _wxTimer?.cancel();
     _wxTimer = Timer.periodic(const Duration(milliseconds: 200), (_) {
       if (!mounted || !_wxRecording) return;
-      setState(
-        () => _wxElapsed = Duration(
-          milliseconds: _wxElapsed.inMilliseconds + 200,
-        ),
+      final next = Duration(
+        milliseconds: _wxElapsed.inMilliseconds + 200,
       );
+      setState(() => _wxElapsed = next);
+      // 最长 60 秒：到点自动停止发送，避免长按不松导致录音悬挂。
+      if (next >= _wxMaxRecordingDuration) {
+        unawaited(_wxEndRecording());
+      }
     });
     widget.focusNode?.unfocus();
   }
 
-  /// 指针按下：记录基准 Y 后开始录音。走原始指针事件，不参与手势竞技场，
-  /// 避免与外层滚动手势互斥导致上滑 / 松手事件被吞掉。
-  void _wxPointerDown(PointerDownEvent event) {
+  /// 长按识别成功：开始录音。长按 recognizer 已赢得手势竞技场并持有指针，
+  /// 后续上滑 / 松手都会回到本按钮，不会被外层滚动或命中区域变化吞掉。
+  void _wxLongPressStart(LongPressStartDetails details) {
     if (_wxRecording) return;
-    _wxPointerDownY = event.localPosition.dy;
     unawaited(_wxStartRecording());
   }
 
-  void _wxPointerMove(PointerMoveEvent event) {
-    if (!_wxRecording || _wxPointerDownY == null) return;
-    final upward = _wxPointerDownY! - event.localPosition.dy;
+  void _wxLongPressMoveUpdate(LongPressMoveUpdateDetails details) {
+    if (!_wxRecording) return;
+    final upward = -details.localOffsetFromOrigin.dy;
     final cancel = upward > 64;
     if (cancel != _wxCancel) setState(() => _wxCancel = cancel);
   }
 
   Future<void> _wxEndRecording() async {
+    _wxSerial++;
     final recorder = _wxRecorder;
     if (!_wxRecording || recorder == null) {
       _resetWxUi();
@@ -2337,6 +2346,7 @@ class _ChatInputBarState extends State<ChatInputBar>
   }
 
   Future<void> _wxAbortRecording() async {
+    _wxSerial++;
     _wxTimer?.cancel();
     final recorder = _wxRecorder;
     final wasRecording = _wxRecording;
@@ -5413,18 +5423,16 @@ class _ChatInputBarState extends State<ChatInputBar>
                                                     _HoldToTalkButton(
                                                       recording: _wxRecording,
                                                       cancel: _wxCancel,
-                                                      onPointerDown:
-                                                          _wxPointerDown,
-                                                      onPointerMove:
-                                                          _wxPointerMove,
-                                                      onPointerUp: (_) =>
+                                                      onLongPressStart:
+                                                          _wxLongPressStart,
+                                                      onLongPressMoveUpdate:
+                                                          _wxLongPressMoveUpdate,
+                                                      onLongPressEnd: (_) =>
                                                           unawaited(
                                                             _wxEndRecording(),
                                                           ),
-                                                      onPointerCancel: (_) =>
-                                                          unawaited(
-                                                            _wxAbortRecording(),
-                                                          ),
+                                                      onLongPressCancel:
+                                                          _wxAbortRecording,
                                                     ),
                                                   _CompactSendButton(
                                                     enabled:
@@ -6138,23 +6146,26 @@ class _DraftImageTapTargetState extends State<_DraftImageTapTarget> {
 
 /// WeChat-style hold-to-talk button. The long-press gesture is owned by this
 /// button and never forwarded to the text field, so holding it cannot trigger
-/// text selection.
+/// text selection. A [GestureDetector] long-press recognizer owns the pointer
+/// after it wins the arena, so move / up keep flowing to this button even when
+/// the finger slides off the small icon — unlike a raw [Listener], which stops
+/// receiving events once the pointer leaves its hit region.
 class _HoldToTalkButton extends StatelessWidget {
   const _HoldToTalkButton({
     required this.recording,
     required this.cancel,
-    required this.onPointerDown,
-    required this.onPointerMove,
-    required this.onPointerUp,
-    required this.onPointerCancel,
+    required this.onLongPressStart,
+    required this.onLongPressMoveUpdate,
+    required this.onLongPressEnd,
+    required this.onLongPressCancel,
   });
 
   final bool recording;
   final bool cancel;
-  final PointerDownEventListener onPointerDown;
-  final PointerMoveEventListener onPointerMove;
-  final PointerUpEventListener onPointerUp;
-  final PointerCancelEventListener onPointerCancel;
+  final GestureLongPressStartCallback onLongPressStart;
+  final GestureLongPressMoveUpdateCallback onLongPressMoveUpdate;
+  final GestureLongPressEndCallback onLongPressEnd;
+  final VoidCallback onLongPressCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -6162,12 +6173,22 @@ class _HoldToTalkButton extends StatelessWidget {
     final fg = cancel
         ? theme.colorScheme.error
         : theme.colorScheme.onSurface.withValues(alpha: 0.54);
-    return Listener(
+    return RawGestureDetector(
       behavior: HitTestBehavior.opaque,
-      onPointerDown: onPointerDown,
-      onPointerMove: onPointerMove,
-      onPointerUp: onPointerUp,
-      onPointerCancel: onPointerCancel,
+      gestures: <Type, GestureRecognizerFactory>{
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+              () => LongPressGestureRecognizer(
+                duration: const Duration(milliseconds: 120),
+              ),
+              (recognizer) {
+                recognizer.onLongPressStart = onLongPressStart;
+                recognizer.onLongPressMoveUpdate = onLongPressMoveUpdate;
+                recognizer.onLongPressEnd = onLongPressEnd;
+                recognizer.onLongPressCancel = onLongPressCancel;
+              },
+            ),
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 120),
         padding: const EdgeInsets.all(10),

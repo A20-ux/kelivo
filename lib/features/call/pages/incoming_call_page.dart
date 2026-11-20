@@ -105,6 +105,7 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     final initial = name.isEmpty ? '?' : name[0];
     final avatarSource = session.avatar ?? '';
     final isNetwork = avatarSource.startsWith('http');
+    final openingLine = (session.openingLine ?? '').trim();
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -133,6 +134,20 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
               active ? _format(elapsed) : 'Incoming call…',
               style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white70),
             ),
+            if (openingLine.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text(
+                  openingLine,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: Colors.white60,
+                    height: 1.4,
+                  ),
+                ),
+              ),
+            ],
             const Spacer(),
             _actions(active, theme),
             const SizedBox(height: 48),

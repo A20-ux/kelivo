@@ -23,6 +23,7 @@ final class IdleProactiveService {
 
   static const String _cfgKey = 'idle_proactive_cfg_v1';
   static const String _lastActiveKey = 'idle_proactive_last_active_v1';
+  static const String _lastCallKey = 'idle_proactive_last_call_v1';
 
   SharedPreferences? _prefs;
   Timer? _timer;
@@ -72,6 +73,18 @@ final class IdleProactiveService {
     return DateTime.fromMicrosecondsSinceEpoch(value);
   }
 
+  /// 最近一次主动来电时间；从未来电时为 `null`。
+  DateTime? get lastCallAt {
+    final value = _prefs?.getInt(_lastCallKey);
+    if (value == null) return null;
+    return DateTime.fromMicrosecondsSinceEpoch(value);
+  }
+
+  /// 记录一次主动来电成功拉起，用于冷却判断。
+  Future<void> recordCall() async {
+    await _prefs?.setInt(_lastCallKey, DateTime.now().microsecondsSinceEpoch);
+  }
+
   void _startTimer() {
     _timer?.cancel();
     _timer = Timer.periodic(
@@ -90,6 +103,8 @@ final class IdleProactiveService {
       lastActiveAt: target.lastActiveAt,
       idleDuration: _settings.idleDuration,
       random0to99: _random.nextInt(100),
+      lastCallAt: lastCallAt,
+      callCooldownDuration: _settings.callCooldownDuration,
     );
     if (action == IdleProactiveAction.none) return;
     onTrigger!(target.conversationId, action);
@@ -103,16 +118,23 @@ final class IdleProactiveService {
     required DateTime? lastActiveAt,
     required Duration idleDuration,
     required int random0to99,
+    DateTime? lastCallAt,
+    Duration? callCooldownDuration,
   }) {
     if (!settings.enabled) return IdleProactiveAction.none;
     final last = lastActiveAt ?? now;
     if (now.difference(last) < idleDuration) return IdleProactiveAction.none;
 
-    final callHit =
-        settings.allowCall && random0to99 < settings.normalizedCallProbability;
+    final cooldown = callCooldownDuration ?? Duration.zero;
+    final onCooldown = lastCallAt != null &&
+        cooldown > Duration.zero &&
+        now.difference(lastCallAt) < cooldown;
+
+    final callAllowed = settings.allowCall && !onCooldown;
+    final callHit = callAllowed && random0to99 < settings.normalizedCallProbability;
     if (callHit) return IdleProactiveAction.call;
     if (settings.allowMessage) return IdleProactiveAction.message;
-    if (settings.allowCall) return IdleProactiveAction.call;
+    if (callAllowed) return IdleProactiveAction.call;
     return IdleProactiveAction.none;
   }
 

@@ -580,7 +580,7 @@ class SettingsProvider extends ChangeNotifier {
       assistantBubbleLayoutEnabled && _assistantBubbleFitContent;
 
   // When on, blank lines split assistant text into one bubble per paragraph.
-  bool _assistantBubbleSplitParagraphs = false;
+  bool _assistantBubbleSplitParagraphs = true;
   bool get assistantBubbleSplitParagraphs =>
       assistantBubbleLayoutEnabled && _assistantBubbleSplitParagraphs;
 
@@ -1227,7 +1227,7 @@ class SettingsProvider extends ChangeNotifier {
     _assistantBubbleFitContent =
         prefs.getBool(_displayAssistantBubbleFitContentKey) ?? false;
     _assistantBubbleSplitParagraphs =
-        prefs.getBool(_displayAssistantBubbleSplitParagraphsKey) ?? false;
+        prefs.getBool(_displayAssistantBubbleSplitParagraphsKey) ?? true;
     // display: markdown/math rendering
     _enableDollarLatex = prefs.getBool(_displayEnableDollarLatexKey) ?? true;
     _enableMathRendering =

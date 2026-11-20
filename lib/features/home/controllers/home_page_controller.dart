@@ -860,12 +860,17 @@ class HomePageController extends ChangeNotifier {
       switch (action) {
         case IdleProactiveAction.call:
           if (IncomingCallService.instance.hasActiveCall) return;
+          // 弹窗前先按上下文生成开场白并落库（文字 + 语音条），这样即便
+          // 用户不接通，会话里也留有记录；生成失败则用通用模板兜底。
+          final opening = await _prepareCallOpening(conversation, assistant);
           IncomingCallService.instance.start(
             conversationId: conversation.id,
             assistantId: assistant.id,
             assistantName: assistant.name,
             avatar: assistant.avatar,
+            openingLine: opening,
           );
+          await IdleProactiveService.instance.recordCall();
           _openIncomingCall();
           return;
         case IdleProactiveAction.message:
@@ -900,6 +905,34 @@ class HomePageController extends ChangeNotifier {
     }
   }
 
+  /// 主页电话按钮：对当前会话主动发起一通模拟来电，复用空闲来电的开场白
+  /// 生成与落库链路。无当前会话或已有进行中通话时直接返回。
+  Future<void> startManualCall() async {
+    try {
+      if (IncomingCallService.instance.hasActiveCall) return;
+      final conversation = currentConversation;
+      if (conversation == null) return;
+      final assistantProvider = _context.read<AssistantProvider>();
+      final assistant = assistantProvider.resolveConversationAssistant(
+        conversation.assistantId,
+      );
+      if (assistant == null) return;
+
+      final opening = await _prepareCallOpening(conversation, assistant);
+      IncomingCallService.instance.start(
+        conversationId: conversation.id,
+        assistantId: assistant.id,
+        assistantName: assistant.name,
+        avatar: assistant.avatar,
+        openingLine: opening,
+      );
+      await IdleProactiveService.instance.recordCall();
+      _openIncomingCall();
+    } catch (_) {
+      // Stale context or transient failure: ignore, nothing to surface.
+    }
+  }
+
   String _idleProactivePrompt() {
     return 'The user has not messaged for a while. Speak first naturally as '
         'this character, in the established language, tone and persona: a '
@@ -908,9 +941,11 @@ class HomePageController extends ChangeNotifier {
         'explanation that this was triggered automatically.';
   }
 
-  /// 接听后按最近聊天上下文生成一句通话第一句，回填给通话页播报；
-  /// 不写死模板，生成失败或无文本时保持静默。
+  /// 接通后的兜底：开场白若已在弹窗前生成并落库，直接交通话页播报；
+  /// 仅当开场化为空（首次生成失败）时，接通后再补生成一次。
   Future<void> _handleCallAnswered(CallSession session) async {
+    final existing = session.openingLine?.trim();
+    if (existing != null && existing.isNotEmpty) return;
     try {
       final conversation = _chatService.getConversation(session.conversationId);
       if (conversation == null) return;
@@ -920,6 +955,22 @@ class HomePageController extends ChangeNotifier {
       );
       if (assistant == null) return;
 
+      final line = await _prepareCallOpening(conversation, assistant);
+      if (line != null) {
+        IncomingCallService.instance.setOpeningLine(line);
+      }
+    } catch (_) {
+      // Stale context or transient failure: stay silent in the call.
+    }
+  }
+
+  /// 按最近聊天上下文生成一句通话开场白，先落库为文字消息，再合成语音条；
+  /// 返回生成好的文本；未配语音/生成失败时返回 `null`，不阻塞来电弹窗。
+  Future<String?> _prepareCallOpening(
+    Conversation conversation,
+    Assistant assistant,
+  ) async {
+    try {
       final result = await _viewModel.sendScheduledMessage(
         input: ChatInputData(text: _callOpeningPrompt()),
         conversation: conversation,
@@ -929,12 +980,13 @@ class HomePageController extends ChangeNotifier {
       );
       final line = result.assistantMessage?.content.trim();
       if (result.success && line != null && line.isNotEmpty) {
-        IncomingCallService.instance.setOpeningLine(line);
         await _saveAssistantVoiceClip(conversation, assistant, line);
+        return line;
       }
     } catch (_) {
-      // Stale context or transient failure: stay silent in the call.
+      // No voice service or transient failure: keep the text-only message.
     }
+    return null;
   }
 
   /// 把一段 AI 文本经语音 API 合成，存成 assistant 语音消息气泡入库；
