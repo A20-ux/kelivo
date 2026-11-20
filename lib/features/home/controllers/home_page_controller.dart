@@ -43,7 +43,7 @@ import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/idle_proactive_service.dart';
-import '../../../core/services/tts/voice_message_builder.dart';
+import '../../../core/services/tts/voice_message_service.dart';
 import '../../../core/services/incoming_call_service.dart';
 import '../../call/pages/incoming_call_page.dart';
 import '../../../core/models/idle_proactive_settings.dart';
@@ -947,17 +947,12 @@ class HomePageController extends ChangeNotifier {
     try {
       final tts = _context.read<TtsProvider>();
       final options = await tts.selectedNetworkService;
-      final part = await VoiceMessageBuilder.buildAudioPart(
-        options: options,
-        text: text,
-      );
-      if (part == null) return;
-      await _chatService.addMessage(
+      await VoiceMessageService.saveAssistantClip(
+        chat: _chatService,
         conversationId: conversation.id,
-        role: 'assistant',
-        parts: [part],
-        modelId: assistant.chatModelId,
-        providerId: assistant.chatModelProvider,
+        text: text,
+        options: options,
+        assistant: assistant,
       );
     } catch (_) {
       // No voice service or transient failure: keep the text-only message.
