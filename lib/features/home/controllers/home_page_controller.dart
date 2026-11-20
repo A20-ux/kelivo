@@ -834,6 +834,52 @@ class HomePageController extends ChangeNotifier {
         lastActiveAt: oldest.updatedAt,
       );
     };
+    IdleProactiveService.instance.onTrigger = _handleIdleProactive;
+  }
+
+  /// 空闲超时触发的执行落点：message 走现有定时发言链路并弹通知；
+  /// call 分支等待模拟来电界面（#4）接入。
+  Future<void> _handleIdleProactive(
+    String conversationId,
+    IdleProactiveAction action,
+  ) async {
+    try {
+      final conversation = _chatService.getConversation(conversationId);
+      if (conversation == null) return;
+      final assistantProvider = _context.read<AssistantProvider>();
+      final assistant = assistantProvider.resolveConversationAssistant(
+        conversation.assistantId,
+      );
+      if (assistant == null) return;
+
+      switch (action) {
+        case IdleProactiveAction.call:
+          // TODO(#4): raise the mock incoming call over this conversation.
+          return;
+        case IdleProactiveAction.message:
+        case IdleProactiveAction.none:
+          break;
+      }
+
+      await _viewModel.sendScheduledMessage(
+        input: ChatInputData(text: _idleProactivePrompt()),
+        conversation: conversation,
+        assistant: assistant,
+        scheduledNotify: true,
+        scheduledPreview: true,
+      );
+    } catch (_) {
+      // Stale/disposed context or a transient failure: ignore, next tick
+      // can retry.
+    }
+  }
+
+  String _idleProactivePrompt() {
+    return 'The user has not messaged for a while. Speak first naturally as '
+        'this character, in the established language, tone and persona: a '
+        'short, organic opening that fits the current conversation mood. '
+        'Output only the message itself, with no preface, report, or '
+        'explanation that this was triggered automatically.';
   }
 
   /// Minimum gap between generation haptics. Stream ticks arrive every 50ms;
