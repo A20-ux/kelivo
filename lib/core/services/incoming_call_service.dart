@@ -1,8 +1,4 @@
-import 'dart:async';
-
 import 'package:flutter/foundation.dart';
-
-import 'call_ringer.dart';
 
 /// 模拟来电的阶段：响铃中 → 通话中 → 已结束。
 enum CallPhase { ringing, active, ended }
@@ -54,6 +50,9 @@ final class IncomingCallService {
   /// 当前来电会话；`null` 表示没有进行中的通话。
   final ValueNotifier<CallSession?> session = ValueNotifier(null);
 
+  /// 接听后由上层注入：按会话上下文生成通话第一句并回填到会话。
+  void Function(CallSession session)? onAnswered;
+
   bool get hasActiveCall =>
       session.value != null && session.value!.phase != CallPhase.ended;
 
@@ -74,20 +73,26 @@ final class IncomingCallService {
       phase: CallPhase.ringing,
       openingLine: openingLine,
     );
-    unawaited(CallRinger.instance.start());
   }
 
-  /// 接听：进入通话中，停止响铃。
+  /// 接听：进入通话中，并通知上层按上下文生成通话第一句。
   void answer() {
     final current = session.value;
     if (current == null || current.phase != CallPhase.ringing) return;
-    unawaited(CallRinger.instance.stop());
-    session.value = current.copyWith(phase: CallPhase.active);
+    final active = current.copyWith(phase: CallPhase.active);
+    session.value = active;
+    onAnswered?.call(active);
   }
 
-  /// 挂断：停止响铃并清空会话。
+  /// 回填生成好的通话第一句，供通话页 TTS 播报。
+  void setOpeningLine(String line) {
+    final current = session.value;
+    if (current == null) return;
+    session.value = current.copyWith(openingLine: line.trim());
+  }
+
+  /// 挂断：清空会话。
   void hangUp() {
-    unawaited(CallRinger.instance.stop());
     session.value = null;
   }
 }

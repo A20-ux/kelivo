@@ -20,9 +20,6 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
   Timer? _tick;
   bool _spokeOpening = false;
 
-  static const String _fallbackOpening =
-      'Hey, I missed you. Is now a good time to talk?';
-
   @override
   void initState() {
     super.initState();
@@ -38,8 +35,11 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     if (session != null &&
         session.phase == CallPhase.active &&
         !_spokeOpening) {
-      _spokeOpening = true;
-      _speakOpening(session);
+      final line = (session.openingLine ?? '').trim();
+      if (line.isNotEmpty) {
+        _spokeOpening = true;
+        _speakLine(line);
+      }
     }
     if (session == null || session.phase == CallPhase.ended) {
       unawaited(_stopSpeaking());
@@ -47,13 +47,12 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     }
   }
 
-  void _speakOpening(CallSession session) {
+  void _speakLine(String line) {
     try {
       final tts = context.read<TtsProvider>();
-      final line = (session.openingLine ?? '').trim();
-      unawaited(tts.speak(line.isEmpty ? _fallbackOpening : line));
+      unawaited(tts.speak(line));
     } catch (_) {
-      // TTS unavailable: fall back to a silent call.
+      // TTS unavailable: stay silent in the call.
     }
   }
 

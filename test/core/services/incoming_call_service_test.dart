@@ -49,5 +49,30 @@ void main() {
       expect(service.session.value, isNull);
       expect(service.hasActiveCall, isFalse);
     });
+
+    test('answer invokes onAnswered with the active session', () {
+      final service = IncomingCallService.instance;
+      service.hangUp();
+      CallSession? captured;
+      service.onAnswered = (session) => captured = session;
+      service.start(
+        conversationId: 'conv-3',
+        assistantId: 'asst-3',
+        assistantName: 'Mira',
+      );
+
+      service.answer();
+
+      expect(captured, isNotNull);
+      expect(captured!.phase, CallPhase.active);
+      expect(captured!.conversationId, 'conv-3');
+      service.onAnswered = null;
+    });
+
+    test('setOpeningLine backfills the spoken line', () {
+      final service = IncomingCallService.instance;
+      service.setOpeningLine('  Hey, you there.  ');
+      expect(service.session.value!.openingLine, 'Hey, you there.');
+    });
   });
 }

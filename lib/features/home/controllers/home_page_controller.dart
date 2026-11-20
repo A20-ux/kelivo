@@ -837,6 +837,7 @@ class HomePageController extends ChangeNotifier {
       );
     };
     IdleProactiveService.instance.onTrigger = _handleIdleProactive;
+    IncomingCallService.instance.onAnswered = _handleCallAnswered;
   }
 
   /// 空闲超时触发的执行落点：message 走现有定时发言链路并弹通知；
@@ -903,6 +904,42 @@ class HomePageController extends ChangeNotifier {
         'short, organic opening that fits the current conversation mood. '
         'Output only the message itself, with no preface, report, or '
         'explanation that this was triggered automatically.';
+  }
+
+  /// 接听后按最近聊天上下文生成一句通话第一句，回填给通话页播报；
+  /// 不写死模板，生成失败或无文本时保持静默。
+  Future<void> _handleCallAnswered(CallSession session) async {
+    try {
+      final conversation = _chatService.getConversation(session.conversationId);
+      if (conversation == null) return;
+      final assistantProvider = _context.read<AssistantProvider>();
+      final assistant = assistantProvider.resolveConversationAssistant(
+        conversation.assistantId,
+      );
+      if (assistant == null) return;
+
+      final result = await _viewModel.sendScheduledMessage(
+        input: ChatInputData(text: _callOpeningPrompt()),
+        conversation: conversation,
+        assistant: assistant,
+        scheduledNotify: false,
+        scheduledPreview: false,
+      );
+      final line = result.assistantMessage?.content.trim();
+      if (result.success && line != null && line.isNotEmpty) {
+        IncomingCallService.instance.setOpeningLine(line);
+      }
+    } catch (_) {
+      // Stale context or transient failure: stay silent in the call.
+    }
+  }
+
+  String _callOpeningPrompt() {
+    return 'The user has answered an incoming call from you. Based on your '
+        'recent conversation history, say one natural, short opening line as '
+        'this character, matching the established language, tone and mood. '
+        'Output only the spoken line: no narration, no mention of a phone '
+        'call, and no note that this was triggered automatically.';
   }
 
   /// Minimum gap between generation haptics. Stream ticks arrive every 50ms;
