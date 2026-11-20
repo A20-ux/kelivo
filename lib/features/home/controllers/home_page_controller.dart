@@ -42,6 +42,8 @@ import '../../../core/providers/instruction_injection_provider.dart';
 import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/idle_proactive_service.dart';
+import '../../../core/services/incoming_call_service.dart';
+import '../../call/pages/incoming_call_page.dart';
 import '../../../core/models/idle_proactive_settings.dart';
 import '../../../core/utils/scheduler_idle.dart';
 import '../../../core/services/tts/tts_text_selection.dart';
@@ -854,7 +856,14 @@ class HomePageController extends ChangeNotifier {
 
       switch (action) {
         case IdleProactiveAction.call:
-          // TODO(#4): raise the mock incoming call over this conversation.
+          if (IncomingCallService.instance.hasActiveCall) return;
+          IncomingCallService.instance.start(
+            conversationId: conversation.id,
+            assistantId: assistant.id,
+            assistantName: assistant.name,
+            avatar: assistant.avatar,
+          );
+          _openIncomingCall();
           return;
         case IdleProactiveAction.message:
         case IdleProactiveAction.none:
@@ -871,6 +880,20 @@ class HomePageController extends ChangeNotifier {
     } catch (_) {
       // Stale/disposed context or a transient failure: ignore, next tick
       // can retry.
+    }
+  }
+
+  void _openIncomingCall() {
+    try {
+      Navigator.of(_context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => const IncomingCallPage(),
+        ),
+      );
+    } catch (_) {
+      // Context already disposed; the session stays in the service and can
+      // be picked up by the next entry point.
     }
   }
 
