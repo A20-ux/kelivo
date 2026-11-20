@@ -17,6 +17,7 @@ final class CallSession {
     required this.avatar,
     required this.startedAt,
     required this.phase,
+    this.openingLine,
   });
 
   final String conversationId;
@@ -26,7 +27,10 @@ final class CallSession {
   final DateTime startedAt;
   final CallPhase phase;
 
-  CallSession copyWith({CallPhase? phase}) {
+  /// 接通后要先念出来的开场白；为空时由页面用通用模板兜底。
+  final String? openingLine;
+
+  CallSession copyWith({CallPhase? phase, String? openingLine}) {
     return CallSession(
       conversationId: conversationId,
       assistantId: assistantId,
@@ -34,6 +38,7 @@ final class CallSession {
       avatar: avatar,
       startedAt: startedAt,
       phase: phase ?? this.phase,
+      openingLine: openingLine ?? this.openingLine,
     );
   }
 }
@@ -58,6 +63,7 @@ final class IncomingCallService {
     required String assistantId,
     required String assistantName,
     String? avatar,
+    String? openingLine,
   }) {
     session.value = CallSession(
       conversationId: conversationId,
@@ -66,6 +72,7 @@ final class IncomingCallService {
       avatar: avatar,
       startedAt: DateTime.now(),
       phase: CallPhase.ringing,
+      openingLine: openingLine,
     );
     unawaited(CallRinger.instance.start());
   }

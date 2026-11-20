@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../core/providers/tts_provider.dart';
 import '../../../core/services/incoming_call_service.dart';
 import '../../../shared/widgets/avatar_image.dart';
 
@@ -16,6 +18,10 @@ class IncomingCallPage extends StatefulWidget {
 
 class _IncomingCallPageState extends State<IncomingCallPage> {
   Timer? _tick;
+  bool _spokeOpening = false;
+
+  static const String _fallbackOpening =
+      'Hey, I missed you. Is now a good time to talk?';
 
   @override
   void initState() {
@@ -28,8 +34,34 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
 
   void _onSessionChanged() {
     final session = IncomingCallService.instance.session.value;
-    if (mounted && (session == null || session.phase == CallPhase.ended)) {
+    if (!mounted) return;
+    if (session != null &&
+        session.phase == CallPhase.active &&
+        !_spokeOpening) {
+      _spokeOpening = true;
+      _speakOpening(session);
+    }
+    if (session == null || session.phase == CallPhase.ended) {
+      unawaited(_stopSpeaking());
       Navigator.of(context).maybePop();
+    }
+  }
+
+  void _speakOpening(CallSession session) {
+    try {
+      final tts = context.read<TtsProvider>();
+      final line = (session.openingLine ?? '').trim();
+      unawaited(tts.speak(line.isEmpty ? _fallbackOpening : line));
+    } catch (_) {
+      // TTS unavailable: fall back to a silent call.
+    }
+  }
+
+  Future<void> _stopSpeaking() async {
+    try {
+      await context.read<TtsProvider>().stop();
+    } catch (_) {
+      // Ignore provider-not-yet-ready cases.
     }
   }
 
@@ -37,6 +69,7 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
   void dispose() {
     _tick?.cancel();
     IncomingCallService.instance.session.removeListener(_onSessionChanged);
+    unawaited(_stopSpeaking());
     super.dispose();
   }
 
