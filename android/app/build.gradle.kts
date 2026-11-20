@@ -71,6 +71,10 @@ android {
         getByName("release") {
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
+            } else {
+                // No official keystore: fall back to the debug certificate so
+                // the release APK is still signed and installable.
+                signingConfig = signingConfigs.getByName("debug")
             }
         }
     }
