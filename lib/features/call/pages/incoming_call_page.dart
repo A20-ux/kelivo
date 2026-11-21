@@ -100,7 +100,10 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     // 第二级：走 TtsProvider（已配置网络语音服务时用它）。
     if (tts != null && tts.isAvailable) {
       try {
-        await tts.speak(line);
+        // 不等朗读结束，先看它有没有真的开口；没开口才进第三级，
+        // 避免同一句被 provider 和系统引擎各念一遍。
+        await tts.speak(line, waitForCompletion: false);
+        await Future<void>.delayed(const Duration(milliseconds: 400));
         if (tts.isSpeaking) return;
       } catch (_) {
         // 继续下一级。
