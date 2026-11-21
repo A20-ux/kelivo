@@ -44,6 +44,7 @@ import '../../../core/providers/memory_provider.dart';
 import '../../../core/services/chat/chat_service.dart';
 import '../../../core/services/idle_proactive_service.dart';
 import '../../../core/services/tts/voice_message_service.dart';
+import '../../../core/services/tts/tts_audio_exporter.dart';
 import '../../../core/services/incoming_call_service.dart';
 import '../../call/pages/incoming_call_page.dart';
 import '../../../core/models/idle_proactive_settings.dart';
@@ -89,8 +90,17 @@ import '../widgets/share_destination_sheet.dart';
 import '../../model/widgets/model_select_sheet.dart';
 
 /// Translation data for UI state (expanded/collapsed).
-class TranslationData {
-  bool expanded = true; // default to expanded when translation is added
+/// 一次通话开场白的产物：文本 + 已合成音频的本地路径。
+final class _CallOpening {
+  const _CallOpening({required this.text, this.audioPath});
+
+  final String text;
+
+  /// 已合成音频的本地绝对路径；未配置语音服务时为 `null`。
+  final String? audioPath;
+}
+
+class TranslationData {  bool expanded = true; // default to expanded when translation is added
 }
 
 class UserMessageEditState {
@@ -894,7 +904,8 @@ class HomePageController extends ChangeNotifier {
             assistantId: assistant.id,
             assistantName: assistant.name,
             avatar: assistant.avatar,
-            openingLine: opening,
+            openingLine: opening?.text,
+            openingAudioPath: opening?.audioPath,
           );
           await IdleProactiveService.instance.recordCall();
           _openIncomingCall();
@@ -950,7 +961,8 @@ class HomePageController extends ChangeNotifier {
         assistantId: assistant.id,
         assistantName: assistant.name,
         avatar: assistant.avatar,
-        openingLine: opening,
+        openingLine: opening?.text,
+        openingAudioPath: opening?.audioPath,
       );
       await IdleProactiveService.instance.recordCall();
       _openIncomingCall();
@@ -960,11 +972,9 @@ class HomePageController extends ChangeNotifier {
   }
 
   String _idleProactivePrompt() {
-    return 'The user has not messaged for a while. Speak first naturally as '
-        'this character, in the established language, tone and persona: a '
-        'short, organic opening that fits the current conversation mood. '
-        'Output only the message itself, with no preface, report, or '
-        'explanation that this was triggered automatically.';
+    return '用户有一段时间没有发消息了。用当前角色的语气、人设和语言，自然地开口说话：'
+        '结合当前聊天的情绪，说一句简短的、像真人主动开口的话。'
+        '只输出消息本身，不要开场说明，不要旁白，也不要说明这是自动触发的。';
   }
 
   /// 接通后的兜底：开场白若已在弹窗前生成并落库，直接交通话页播报；
@@ -983,7 +993,10 @@ class HomePageController extends ChangeNotifier {
 
       final line = await _prepareCallOpening(conversation, assistant);
       if (line != null) {
-        IncomingCallService.instance.setOpeningLine(line);
+        IncomingCallService.instance.setOpeningLine(
+          line.text,
+          audioPath: line.audioPath,
+        );
       }
     } catch (_) {
       // Stale context or transient failure: stay silent in the call.
@@ -991,8 +1004,8 @@ class HomePageController extends ChangeNotifier {
   }
 
   /// 按最近聊天上下文生成一句通话开场白，先落库为文字消息，再合成语音条；
-  /// 返回生成好的文本；未配语音/生成失败时返回 `null`，不阻塞来电弹窗。
-  Future<String?> _prepareCallOpening(
+  /// 返回生成好的文本与已合成音频文件路径；未配语音/生成失败时返回 `null`。
+  Future<_CallOpening?> _prepareCallOpening(
     Conversation conversation,
     Assistant assistant,
   ) async {
@@ -1006,8 +1019,12 @@ class HomePageController extends ChangeNotifier {
       );
       final line = result.assistantMessage?.content.trim();
       if (result.success && line != null && line.isNotEmpty) {
-        await _saveAssistantVoiceClip(conversation, assistant, line);
-        return line;
+        final audioPath = await _saveAssistantVoiceClip(
+          conversation,
+          assistant,
+          line,
+        );
+        return _CallOpening(text: line, audioPath: audioPath);
       }
     } catch (_) {
       // No voice service or transient failure: keep the text-only message.
@@ -1016,8 +1033,9 @@ class HomePageController extends ChangeNotifier {
   }
 
   /// 把一段 AI 文本经语音 API 合成，存成 assistant 语音消息气泡入库；
-  /// 未配语音服务或合成失败时静默跳过，不影响已有文字消息。
-  Future<void> _saveAssistantVoiceClip(
+  /// 返回已合成音频的本地路径，供通话页直接播放。未配语音服务或合成失败
+  /// 时返回 `null`，不影响已有文字消息。
+  Future<String?> _saveAssistantVoiceClip(
     Conversation conversation,
     Assistant assistant,
     String text,
@@ -1025,6 +1043,11 @@ class HomePageController extends ChangeNotifier {
     try {
       final tts = _context.read<TtsProvider>();
       final options = await tts.selectedNetworkService;
+      final result = await TtsAudioExporter.synthesizeToFile(
+        options: options,
+        text: text,
+      );
+      if (result == null) return null;
       await VoiceMessageService.saveAssistantClip(
         chat: _chatService,
         conversationId: conversation.id,
@@ -1032,17 +1055,18 @@ class HomePageController extends ChangeNotifier {
         options: options,
         assistant: assistant,
       );
+      return result.path;
     } catch (_) {
       // No voice service or transient failure: keep the text-only message.
     }
+    return null;
   }
 
   String _callOpeningPrompt() {
-    return 'The user has answered an incoming call from you. Based on your '
-        'recent conversation history, say one natural, short opening line as '
-        'this character, matching the established language, tone and mood. '
-        'Output only the spoken line: no narration, no mention of a phone '
-        'call, and no note that this was triggered automatically.';
+    return '用户已经接通了你的来电。结合你们最近的聊天记录，用当前角色的'
+        '语气、说话风格和情绪，说一句简短自然的开场白。只输出要说的台词本身，'
+        '不要描写动作或旁白，不要提到"打电话"，也不要说明这是自动触发的。'
+        '用你们平时聊天的语言回复。';
   }
 
   /// Minimum gap between generation haptics. Stream ticks arrive every 50ms;

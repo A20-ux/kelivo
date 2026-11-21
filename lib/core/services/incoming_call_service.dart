@@ -14,6 +14,7 @@ final class CallSession {
     required this.startedAt,
     required this.phase,
     this.openingLine,
+    this.openingAudioPath,
     this.answeredAt,
   });
 
@@ -33,9 +34,14 @@ final class CallSession {
   /// 接通后要先念出来的开场白；为空时由页面用通用模板兜底。
   final String? openingLine;
 
+  /// 开场白的已合成音频本地绝对路径。存在时通话页直接播文件，不依赖
+  /// 系统 TTS 引擎，避免部分机型系统引擎缺失导致完全静音。
+  final String? openingAudioPath;
+
   CallSession copyWith({
     CallPhase? phase,
     String? openingLine,
+    String? openingAudioPath,
     DateTime? answeredAt,
   }) {
     return CallSession(
@@ -46,6 +52,7 @@ final class CallSession {
       startedAt: startedAt,
       phase: phase ?? this.phase,
       openingLine: openingLine ?? this.openingLine,
+      openingAudioPath: openingAudioPath ?? this.openingAudioPath,
       answeredAt: answeredAt ?? this.answeredAt,
     );
   }
@@ -82,6 +89,7 @@ final class IncomingCallService {
     required String assistantName,
     String? avatar,
     String? openingLine,
+    String? openingAudioPath,
   }) {
     lastCallDuration = null;
     session.value = CallSession(
@@ -92,6 +100,7 @@ final class IncomingCallService {
       startedAt: DateTime.now(),
       phase: CallPhase.ringing,
       openingLine: openingLine,
+      openingAudioPath: openingAudioPath,
     );
   }
 
@@ -107,11 +116,15 @@ final class IncomingCallService {
     onAnswered?.call(active);
   }
 
-  /// 回填生成好的通话第一句，供通话页 TTS 播报。
-  void setOpeningLine(String line) {
+  /// 回填生成好的通话第一句，供通话页播报。若已有合成音频路径一并回填，
+  /// 页面优先播本地文件。
+  void setOpeningLine(String line, {String? audioPath}) {
     final current = session.value;
     if (current == null) return;
-    session.value = current.copyWith(openingLine: line.trim());
+    session.value = current.copyWith(
+      openingLine: line.trim(),
+      openingAudioPath: audioPath,
+    );
   }
 
   /// 挂断：计算实际通话时长（仅接通后计入），通知上层后清空会话。

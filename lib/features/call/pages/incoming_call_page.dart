@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -20,6 +22,13 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
   Timer? _tick;
   bool _spokeOpening = false;
 
+  /// 直接播放已合成好的开场白音频文件。不依赖系统 TTS 引擎，避免部分
+  /// 机型系统引擎缺失时完全静音。
+  final AudioPlayer _clipPlayer = AudioPlayer();
+
+  /// 当前这条无声音提示；非空时在通话页常驻展示，不再只是一闪而过。
+  String? _noVoiceHint;
+
   @override
   void initState() {
     super.initState();
@@ -36,9 +45,10 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
         session.phase == CallPhase.active &&
         !_spokeOpening) {
       final line = (session.openingLine ?? '').trim();
-      if (line.isNotEmpty) {
+      final audioPath = session.openingAudioPath?.trim();
+      if (line.isNotEmpty || (audioPath != null && audioPath.isNotEmpty)) {
         _spokeOpening = true;
-        _speakLine(line);
+        _speakOpening(line, audioPath);
       }
     }
     if (session == null || session.phase == CallPhase.ended) {
@@ -47,18 +57,72 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     }
   }
 
-  void _speakLine(String line) {
+  /// 播报开场白：优先播已合成好的音频文件（最稳），文件不可用时退回
+  /// 系统 TTS；两条路都不可用则给出明确提示，不再静默失败。
+  void _speakOpening(String line, String? audioPath) {
+    unawaited(_speakOpeningInternal(line, audioPath));
+  }
+
+  Future<void> _speakOpeningInternal(String line, String? audioPath) async {
+    // 在第一个 await 之前取好 provider，避免跨异步拿 BuildContext。
+    TtsProvider? tts;
     try {
-      final tts = context.read<TtsProvider>();
-      unawaited(tts.speak(line));
+      tts = context.read<TtsProvider>();
     } catch (_) {
-      // TTS unavailable: stay silent in the call.
+      tts = null;
+    }
+    if (audioPath != null && audioPath.isNotEmpty) {
+      try {
+        final file = File(audioPath);
+        if (await file.exists() && await file.length() > 0) {
+          await _clipPlayer.stop();
+          await _clipPlayer.play(DeviceFileSource(audioPath));
+          return;
+        }
+      } catch (_) {
+        // 文件播不了，继续走系统 TTS 兜底。
+      }
+    }
+    if (line.isEmpty) {
+      _notifyNoVoice('开场白为空，没有可播报的内容');
+      return;
+    }
+    if (tts == null || !tts.isAvailable) {
+      // speak() 在 provider 未初始化时是静默 return，这里显式判一下，
+      // 避免"点了没声也不报错"。
+      _notifyNoVoice('通话没有声音：还没配置语音服务。请到 设置 → 语音服务 → 新增（网络 TTS）填好接口和密钥');
+      return;
+    }
+    try {
+      await tts.speak(line);
+    } catch (_) {
+      _notifyNoVoice('通话没有声音：语音服务调用失败，请检查 设置 → 语音服务 的接口地址与密钥');
     }
   }
 
+  void _notifyNoVoice(String message) {
+    if (!mounted) return;
+    setState(() => _noVoiceHint = message);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 4)),
+    );
+  }
+
   Future<void> _stopSpeaking() async {
+    // 先同步取好 provider，再进入异步清理，避免跨异步使用 context。
+    TtsProvider? tts;
     try {
-      await context.read<TtsProvider>().stop();
+      tts = context.read<TtsProvider>();
+    } catch (_) {
+      tts = null;
+    }
+    try {
+      await _clipPlayer.stop();
+    } catch (_) {
+      // Ignore player-not-ready cases.
+    }
+    try {
+      await tts?.stop();
     } catch (_) {
       // Ignore provider-not-yet-ready cases.
     }
@@ -68,8 +132,29 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
   void dispose() {
     _tick?.cancel();
     IncomingCallService.instance.session.removeListener(_onSessionChanged);
-    unawaited(_stopSpeaking());
+    // dispose 里同步取好 provider，异步清理不再碰 context。
+    TtsProvider? tts;
+    try {
+      tts = context.read<TtsProvider>();
+    } catch (_) {
+      tts = null;
+    }
+    unawaited(_speakClosingAndDispose(tts));
     super.dispose();
+  }
+
+  Future<void> _speakClosingAndDispose(TtsProvider? tts) async {
+    try {
+      await _clipPlayer.stop();
+      await _clipPlayer.dispose();
+    } catch (_) {
+      // Ignore dispose races.
+    }
+    try {
+      await tts?.stop();
+    } catch (_) {
+      // Ignore provider-not-yet-ready cases.
+    }
   }
 
   String _format(Duration duration) {
@@ -128,16 +213,42 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
               _fallbackAvatar(initial, 120),
             const SizedBox(height: 24),
             Text(
-              name.isEmpty ? 'Unknown' : name,
+              name.isEmpty ? '未命名' : name,
               style: theme.textTheme.headlineSmall?.copyWith(
                 color: Colors.white,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              active ? _format(elapsed) : 'Incoming call…',
+              active ? _format(elapsed) : '来电中…',
               style: theme.textTheme.bodyLarge?.copyWith(color: Colors.white70),
             ),
+            if (_noVoiceHint != null) ...[
+              const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
+                    child: Text(
+                      _noVoiceHint!,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: Colors.orangeAccent,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
             if (openingLine.isNotEmpty) ...[
               const SizedBox(height: 16),
               Padding(
