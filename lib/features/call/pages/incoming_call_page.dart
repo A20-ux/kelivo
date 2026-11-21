@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_tts/flutter_tts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/providers/tts_provider.dart';
@@ -29,6 +30,10 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
   /// 当前这条无声音提示；非空时在通话页常驻展示，不再只是一闪而过。
   String? _noVoiceHint;
 
+  /// 直连系统朗读引擎的兜底通道：绕过 TtsProvider 的初始化状态，
+  /// 只要系统里有可用引擎就能发声。
+  FlutterTts? _rawTts;
+
   @override
   void initState() {
     super.initState();
@@ -46,9 +51,13 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
         !_spokeOpening) {
       final line = (session.openingLine ?? '').trim();
       final audioPath = session.openingAudioPath?.trim();
+      final voiceError = session.openingVoiceError?.trim();
       if (line.isNotEmpty || (audioPath != null && audioPath.isNotEmpty)) {
         _spokeOpening = true;
         _speakOpening(line, audioPath);
+      } else if (voiceError != null && voiceError.isNotEmpty) {
+        _spokeOpening = true;
+        _notifyNoVoice(voiceError);
       }
     }
     if (session == null || session.phase == CallPhase.ended) {
@@ -71,6 +80,7 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
     } catch (_) {
       tts = null;
     }
+    // 第一级：播已合成好的本地音频文件（最稳，不依赖任何引擎）。
     if (audioPath != null && audioPath.isNotEmpty) {
       try {
         final file = File(audioPath);
@@ -80,23 +90,45 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
           return;
         }
       } catch (_) {
-        // 文件播不了，继续走系统 TTS 兜底。
+        // 文件播不了，继续下一级。
       }
     }
     if (line.isEmpty) {
       _notifyNoVoice('开场白为空，没有可播报的内容');
       return;
     }
-    if (tts == null || !tts.isAvailable) {
-      // speak() 在 provider 未初始化时是静默 return，这里显式判一下，
-      // 避免"点了没声也不报错"。
-      _notifyNoVoice('通话没有声音：还没配置语音服务。请到 设置 → 语音服务 → 新增（网络 TTS）填好接口和密钥');
-      return;
+    // 第二级：走 TtsProvider（已配置网络语音服务时用它）。
+    if (tts != null && tts.isAvailable) {
+      try {
+        await tts.speak(line);
+        if (tts.isSpeaking) return;
+      } catch (_) {
+        // 继续下一级。
+      }
     }
+    // 第三级：直连系统朗读引擎，绕过 provider 初始化，强制中文。
+    final ok = await _speakWithSystemEngine(line);
+    if (!ok) {
+      _notifyNoVoice(
+        '通话仍然没有声音：本机没有可用的中文朗读引擎，也没有配置网络语音服务。'
+        '请到 设置 → 语音服务 新增一项网络 TTS（接口地址填你对话服务商的地址即可）',
+      );
+    }
+  }
+
+  /// 直接调用系统朗读引擎发声；返回是否真的开始朗读。
+  Future<bool> _speakWithSystemEngine(String line) async {
     try {
-      await tts.speak(line);
+      final engine = _rawTts ??= FlutterTts();
+      await engine.setLanguage('zh-CN');
+      await engine.setSpeechRate(0.5);
+      await engine.setVolume(1.0);
+      await engine.awaitSpeakCompletion(false);
+      await engine.stop();
+      await engine.speak(line);
+      return true;
     } catch (_) {
-      _notifyNoVoice('通话没有声音：语音服务调用失败，请检查 设置 → 语音服务 的接口地址与密钥');
+      return false;
     }
   }
 
@@ -149,6 +181,11 @@ class _IncomingCallPageState extends State<IncomingCallPage> {
       await _clipPlayer.dispose();
     } catch (_) {
       // Ignore dispose races.
+    }
+    try {
+      await _rawTts?.stop();
+    } catch (_) {
+      // Ignore engine-not-ready cases.
     }
     try {
       await tts?.stop();

@@ -36,6 +36,7 @@ import '../../../core/models/assistant.dart';
 import '../../../core/models/assistant_regex.dart';
 import '../../../core/providers/assistant_provider.dart';
 import '../../../core/providers/settings_provider.dart';
+import '../../../core/services/tts/network_tts.dart';
 import '../../../core/providers/mcp_provider.dart';
 import '../../../core/providers/tts_provider.dart';
 import '../../../core/providers/quick_phrase_provider.dart';
@@ -92,12 +93,15 @@ import '../../model/widgets/model_select_sheet.dart';
 /// Translation data for UI state (expanded/collapsed).
 /// 一次通话开场白的产物：文本 + 已合成音频的本地路径。
 final class _CallOpening {
-  const _CallOpening({required this.text, this.audioPath});
+  const _CallOpening({required this.text, this.audioPath, this.voiceError});
 
   final String text;
 
   /// 已合成音频的本地绝对路径；未配置语音服务时为 `null`。
   final String? audioPath;
+
+  /// 合成失败的具体原因，供通话页直接展示。
+  final String? voiceError;
 }
 
 class TranslationData {  bool expanded = true; // default to expanded when translation is added
@@ -906,6 +910,7 @@ class HomePageController extends ChangeNotifier {
             avatar: assistant.avatar,
             openingLine: opening?.text,
             openingAudioPath: opening?.audioPath,
+            openingVoiceError: opening?.voiceError,
           );
           await IdleProactiveService.instance.recordCall();
           _openIncomingCall();
@@ -963,6 +968,7 @@ class HomePageController extends ChangeNotifier {
         avatar: assistant.avatar,
         openingLine: opening?.text,
         openingAudioPath: opening?.audioPath,
+        openingVoiceError: opening?.voiceError,
       );
       await IdleProactiveService.instance.recordCall();
       _openIncomingCall();
@@ -996,6 +1002,7 @@ class HomePageController extends ChangeNotifier {
         IncomingCallService.instance.setOpeningLine(
           line.text,
           audioPath: line.audioPath,
+          voiceError: line.voiceError,
         );
       }
     } catch (_) {
@@ -1019,12 +1026,16 @@ class HomePageController extends ChangeNotifier {
       );
       final line = result.assistantMessage?.content.trim();
       if (result.success && line != null && line.isNotEmpty) {
-        final audioPath = await _saveAssistantVoiceClip(
+        final clip = await _saveAssistantVoiceClip(
           conversation,
           assistant,
           line,
         );
-        return _CallOpening(text: line, audioPath: audioPath);
+        return _CallOpening(
+          text: line,
+          audioPath: clip.path,
+          voiceError: clip.error,
+        );
       }
     } catch (_) {
       // No voice service or transient failure: keep the text-only message.
@@ -1033,21 +1044,27 @@ class HomePageController extends ChangeNotifier {
   }
 
   /// 把一段 AI 文本经语音 API 合成，存成 assistant 语音消息气泡入库；
-  /// 返回已合成音频的本地路径，供通话页直接播放。未配语音服务或合成失败
-  /// 时返回 `null`，不影响已有文字消息。
-  Future<String?> _saveAssistantVoiceClip(
+  /// 返回已合成音频的本地路径与失败原因，供通话页播放或提示。
+  Future<({String? path, String? error})> _saveAssistantVoiceClip(
     Conversation conversation,
     Assistant assistant,
     String text,
   ) async {
     try {
-      final tts = _context.read<TtsProvider>();
-      final options = await tts.selectedNetworkService;
+      final options = await _resolveVoiceService();
+      if (options == null) {
+        return (path: null, error: '没有可用的语音服务：当前对话服务商缺少接口地址或密钥');
+      }
       final result = await TtsAudioExporter.synthesizeToFile(
         options: options,
         text: text,
       );
-      if (result == null) return null;
+      if (result == null) {
+        return (
+          path: null,
+          error: '语音合成返回空音频（服务商 ${options.name} 可能不支持该语音接口）',
+        );
+      }
       await VoiceMessageService.saveAssistantClip(
         chat: _chatService,
         conversationId: conversation.id,
@@ -1055,11 +1072,78 @@ class HomePageController extends ChangeNotifier {
         options: options,
         assistant: assistant,
       );
-      return result.path;
-    } catch (_) {
-      // No voice service or transient failure: keep the text-only message.
+      return (path: result.path, error: null);
+    } catch (e) {
+      return (path: null, error: '语音合成请求异常：${e.toString()}');
     }
-    return null;
+  }
+
+  /// 取一个可用的网络语音服务：已有选中配置直接用；没有就按当前对话
+  /// 服务商的密钥与地址自动生成一个 OpenAI 兼容语音服务并选中，省掉
+  /// 手工配置这一步（手工没配就是这次"通话完全没声音"的直接原因）。
+  Future<TtsServiceOptions?> _resolveVoiceService() async {
+    // 先把两个 provider 同步取好，后面进入异步不再碰 BuildContext。
+    final TtsProvider tts;
+    final SettingsProvider settings;
+    try {
+      tts = _context.read<TtsProvider>();
+      settings = _context.read<SettingsProvider>();
+    } catch (_) {
+      return null;
+    }
+    try {
+      final existing = await tts.selectedNetworkService;
+      if (existing != null && existing.enabled) return existing;
+    } catch (_) {
+      // provider 尚未就绪时继续尝试自动生成。
+    }
+
+    ProviderConfig? candidate;
+    for (final cfg in settings.providerConfigs.values) {
+      final key = cfg.apiKey.trim();
+      final base = cfg.baseUrl.trim();
+      if (!cfg.enabled) continue;
+      if (key.isEmpty || base.isEmpty) continue;
+      if (!base.startsWith('http')) continue;
+      candidate = cfg;
+      break;
+    }
+    if (candidate == null) return null;
+
+    final created = OpenAiTtsOptions(
+      enabled: true,
+      name: '自动语音（${candidate.name}）',
+      apiKey: candidate.apiKey.trim(),
+      baseUrl: _normalizeTtsBaseUrl(candidate.baseUrl),
+      model: 'gpt-4o-mini-tts',
+      voice: 'alloy',
+    );
+    await settings.setTtsServices([...settings.ttsServices, created]);
+    await settings.setSelectedTtsServiceId(created.id);
+    return created;
+  }
+
+  /// 把对话服务商地址规整成语音接口的 base：
+  /// `https://x.com/v1/chat/completions` → `https://x.com/v1`。
+  String _normalizeTtsBaseUrl(String raw) {
+    var base = raw.trim();
+    while (base.endsWith('/')) {
+      base = base.substring(0, base.length - 1);
+    }
+    for (final suffix in const [
+      '/chat/completions',
+      '/completions',
+      '/chat',
+    ]) {
+      if (base.toLowerCase().endsWith(suffix)) {
+        base = base.substring(0, base.length - suffix.length);
+        break;
+      }
+    }
+    if (!base.toLowerCase().endsWith('/v1') && !base.toLowerCase().endsWith('/v1beta')) {
+      base = '$base/v1';
+    }
+    return base;
   }
 
   String _callOpeningPrompt() {

@@ -15,6 +15,7 @@ final class CallSession {
     required this.phase,
     this.openingLine,
     this.openingAudioPath,
+    this.openingVoiceError,
     this.answeredAt,
   });
 
@@ -38,10 +39,15 @@ final class CallSession {
   /// 系统 TTS 引擎，避免部分机型系统引擎缺失导致完全静音。
   final String? openingAudioPath;
 
+  /// 合成失败的具体原因（接口返回码、密钥错误等），供通话页直接显示，
+  /// 避免"没声音也不说为什么"。
+  final String? openingVoiceError;
+
   CallSession copyWith({
     CallPhase? phase,
     String? openingLine,
     String? openingAudioPath,
+    String? openingVoiceError,
     DateTime? answeredAt,
   }) {
     return CallSession(
@@ -53,6 +59,7 @@ final class CallSession {
       phase: phase ?? this.phase,
       openingLine: openingLine ?? this.openingLine,
       openingAudioPath: openingAudioPath ?? this.openingAudioPath,
+      openingVoiceError: openingVoiceError ?? this.openingVoiceError,
       answeredAt: answeredAt ?? this.answeredAt,
     );
   }
@@ -90,6 +97,7 @@ final class IncomingCallService {
     String? avatar,
     String? openingLine,
     String? openingAudioPath,
+    String? openingVoiceError,
   }) {
     lastCallDuration = null;
     session.value = CallSession(
@@ -101,6 +109,7 @@ final class IncomingCallService {
       phase: CallPhase.ringing,
       openingLine: openingLine,
       openingAudioPath: openingAudioPath,
+      openingVoiceError: openingVoiceError,
     );
   }
 
@@ -118,12 +127,17 @@ final class IncomingCallService {
 
   /// 回填生成好的通话第一句，供通话页播报。若已有合成音频路径一并回填，
   /// 页面优先播本地文件。
-  void setOpeningLine(String line, {String? audioPath}) {
+  void setOpeningLine(
+    String line, {
+    String? audioPath,
+    String? voiceError,
+  }) {
     final current = session.value;
     if (current == null) return;
     session.value = current.copyWith(
       openingLine: line.trim(),
       openingAudioPath: audioPath,
+      openingVoiceError: voiceError,
     );
   }
 
